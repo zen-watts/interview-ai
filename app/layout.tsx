@@ -1,25 +1,36 @@
 import type { Metadata } from "next";
+import { Inter, Source_Serif_4 } from "next/font/google";
 import type { ReactNode } from "react";
 
-// Shared metadata for all pages in the app router.
+import "@/app/globals.css";
+import { AppStoreProvider } from "@/src/components/providers/app-store-provider";
+
+const sourceSerif = Source_Serif_4({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "600", "700"],
+});
+
+const inter = Inter({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600"],
+});
+
 export const metadata: Metadata = {
-  title: "Poly Prompt",
-  description: "Hackathon foundation app",
+  title: "Quiet Interview",
+  description: "Psychologically intelligent AI interview practice",
 };
 
-// Root layout used by every route. Keeps styling intentionally minimal for hackathon speed.
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body
-        style={{
-          fontFamily: "system-ui, sans-serif",
-          margin: "0 auto",
-          maxWidth: 720,
-          padding: "2rem 1rem",
-        }}
-      >
-        {children}
+    <html lang="en" className={`${sourceSerif.variable} ${inter.variable}`}>
+      <body>
+        <AppStoreProvider>
+          <div className="mx-auto min-h-screen max-w-reading px-6 py-10 md:px-10 md:py-12">{children}</div>
+        </AppStoreProvider>
       </body>
     </html>
   );

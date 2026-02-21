@@ -1,20 +1,26 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+"use client";
 
-import { decodeCookieValue, DEV_AUTH_COOKIE } from "@/lib/auth";
+import { HomePage } from "@/src/components/home/home-page";
+import { OnboardingFlow } from "@/src/components/onboarding/onboarding-flow";
+import { useAppStore } from "@/src/components/providers/app-store-provider";
+import { Card } from "@/src/components/ui/card";
 
-/**
- * Entry route for the app.
- * Redirects authenticated users to `/dashboard`, otherwise to `/login`.
- * Uses local browser cookie storage only.
- */
-export default async function HomePage() {
-  const cookieStore = await cookies();
-  const email = decodeCookieValue(cookieStore.get(DEV_AUTH_COOKIE)?.value);
+export default function RootPage() {
+  const { hydrated, store } = useAppStore();
 
-  if (email) {
-    redirect("/dashboard");
+  if (!hydrated) {
+    return (
+      <main className="flex min-h-[80vh] items-center justify-center">
+        <Card>
+          <p className="text-paper-softInk">Loading your workspace...</p>
+        </Card>
+      </main>
+    );
   }
 
-  redirect("/login");
+  if (!store.profile) {
+    return <OnboardingFlow />;
+  }
+
+  return <HomePage />;
 }
