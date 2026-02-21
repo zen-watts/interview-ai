@@ -15,6 +15,7 @@ import { loadStore, persistStore } from "@/src/lib/storage/local-storage";
 import { createEmptyStore } from "@/src/lib/storage/schema";
 import type {
   AppStore,
+  DevSettings,
   InterviewAnalysis,
   InterviewAttempt,
   InterviewAttemptStatus,
@@ -56,6 +57,7 @@ interface AppStoreContextValue {
   setAttemptStatus: (attemptId: string, status: InterviewAttemptStatus, lastError?: string | null) => void;
   setAttemptScript: (attemptId: string, script: string) => void;
   setAttemptAnalysis: (attemptId: string, analysis: InterviewAnalysis) => void;
+  patchDevSettings: (patch: Partial<DevSettings>) => void;
 }
 
 const AppStoreContext = createContext<AppStoreContextValue | null>(null);
@@ -291,6 +293,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [patchAttempt],
   );
 
+  const patchDevSettings = useCallback((patch: Partial<DevSettings>) => {
+    setStore((current) => {
+      const nextSettings = {
+        ...current.devSettings,
+        ...patch,
+      };
+
+      logger.info("Developer settings updated.", nextSettings);
+
+      return {
+        ...current,
+        devSettings: nextSettings,
+      };
+    });
+  }, []);
+
   const value = useMemo<AppStoreContextValue>(
     () => ({
       store,
@@ -305,6 +323,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setAttemptStatus,
       setAttemptScript,
       setAttemptAnalysis,
+      patchDevSettings,
     }),
     [
       appendTranscriptTurn,
@@ -317,6 +336,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setAttemptAnalysis,
       setAttemptScript,
       setAttemptStatus,
+      patchDevSettings,
       store,
       updateRole,
     ],

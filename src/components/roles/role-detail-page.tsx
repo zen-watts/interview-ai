@@ -106,7 +106,14 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {attempts.map((attempt) => (
-              <Link key={attempt.id} href={`/roles/${role.id}/attempts/${attempt.id}`}>
+              <Link
+                key={attempt.id}
+                href={
+                  attempt.status === "analysis_pending" || attempt.status === "complete"
+                    ? `/roles/${role.id}/attempts/${attempt.id}/conclusion`
+                    : `/roles/${role.id}/attempts/${attempt.id}`
+                }
+              >
                 <Card className="h-full space-y-4 transition hover:border-paper-accent">
                   <div className="space-y-1">
                     <h3 className="text-xl">{attempt.config.category}</h3>
