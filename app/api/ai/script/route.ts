@@ -21,6 +21,8 @@ const bodySchema = z.object({
     name: z.string().min(1),
     targetJob: z.string().min(1),
     experienceLevel: z.enum(experienceValues),
+    age: z.number().int().min(1).max(120).nullable().default(null),
+    pronouns: z.string().default(""),
     resumeText: z.string(),
     resumeSummary: z.string(),
     createdAt: z.string(),

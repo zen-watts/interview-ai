@@ -40,6 +40,8 @@ interface ProfileInput {
   name: string;
   targetJob: string;
   experienceLevel: UserProfile["experienceLevel"];
+  age: UserProfile["age"];
+  pronouns: UserProfile["pronouns"];
   resumeText: string;
   resumeSummary: string;
 }
