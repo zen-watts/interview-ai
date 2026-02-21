@@ -1,45 +1,26 @@
 # Poly Prompt Foundation
 
-Minimal Next.js + TypeScript + Supabase Auth/Postgres starter.
+Minimal Next.js + TypeScript starter with local browser-storage auth.
 
-## Quick local mode (no Supabase yet)
-
-If Supabase env vars are not set, the app uses a local dev auth cookie so you can still:
-
-- open `/login`
-- sign in/sign up locally
-- access `/dashboard`
-- log out
-
-Run with:
-
-```bash
-npm start
-```
-
-## 1) Create Supabase project
-
-Copy your project values from Supabase:
-
-- `Project URL`
-- `anon public key`
-
-## 2) Run DB SQL
-
-In Supabase SQL Editor, run `sql/001_init.sql`.
-
-## 3) Configure env vars
-
-Copy `.env.example` to `.env.local` and set:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-## 4) Run app
+## Run locally (no remote database required)
 
 ```bash
 npm install
-npm run dev
+npm start
 ```
 
-Visit `http://localhost:3000/login`, sign up/sign in, then open `/dashboard`.
+Then open `http://localhost:3000/login`.
+
+## Current auth behavior
+
+- Login stores email in a local browser cookie (`dev_auth_email`)
+- `/dashboard` requires that cookie
+- `/logout` clears that cookie and redirects to `/login`
+
+## Later: add Supabase
+
+Supabase helper files and SQL are still included for later integration:
+
+- `lib/supabase/client.ts`
+- `lib/supabase/server.ts`
+- `sql/001_init.sql`
