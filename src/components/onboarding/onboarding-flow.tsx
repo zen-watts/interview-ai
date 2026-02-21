@@ -17,6 +17,27 @@ import { extractResumeText } from "@/src/lib/utils/resume-parser";
 
 const logger = createLogger("onboarding");
 
+function toErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+
+  try {
+    const serialized = JSON.stringify(error);
+    if (serialized && serialized !== "{}") {
+      return serialized;
+    }
+  } catch {
+    // Ignore serialization failures.
+  }
+
+  return fallback;
+}
+
 interface ProfileDraft {
   name: string;
   targetJob: string;
@@ -102,10 +123,13 @@ export function OnboardingFlow() {
         hasTargetJob: Boolean(summary.targetJob),
       });
     } catch (uploadError) {
-      const message = uploadError instanceof Error ? uploadError.message : "Resume upload failed.";
+      const message = toErrorMessage(uploadError, "Resume upload failed.");
       setError(message);
       setStatusMessage(null);
-      logger.error("Resume upload or processing failed.", { message });
+      logger.error("Resume upload or processing failed.", {
+        message,
+        detail: uploadError instanceof Error ? uploadError.stack : String(uploadError),
+      });
     } finally {
       setUploading(false);
     }

@@ -6,75 +6,62 @@ function normalizeText(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
-async function extractTxt(file: File) {
-  const text = await file.text();
-  return normalizeText(text);
-}
-
-async function extractDocx(file: File) {
-  const mammoth = await import("mammoth");
-  const arrayBuffer = await file.arrayBuffer();
-  const result = await mammoth.extractRawText({ arrayBuffer });
-
-  return normalizeText(result.value);
-}
-
-async function extractPdf(file: File) {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const buffer = await file.arrayBuffer();
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
-  const loadingTask = pdfjs.getDocument({
-    data: new Uint8Array(buffer),
-  });
-
-  const pdf = await loadingTask.promise;
-  const pages: string[] = [];
-
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const content = await page.getTextContent();
-    const pageText = content.items
-      .map((item) => {
-        if ("str" in item) {
-          return item.str;
-        }
-
-        return "";
-      })
-      .join(" ");
-
-    pages.push(pageText);
+function toErrorMessage(errorValue: unknown, fallback: string) {
+  if (typeof errorValue === "string" && errorValue.trim()) {
+    return errorValue;
   }
 
-  return normalizeText(pages.join("\n"));
+  if (errorValue instanceof Error && errorValue.message) {
+    return errorValue.message;
+  }
+
+  try {
+    const serialized = JSON.stringify(errorValue);
+    if (serialized && serialized !== "{}") {
+      return serialized;
+    }
+  } catch {
+    // Ignore serialization failures.
+  }
+
+  return fallback;
 }
 
 /**
- * Extracts plain resume text from browser-uploaded PDF, DOCX, or TXT files.
+ * Extracts plain resume text by posting the uploaded file to the server parser endpoint.
  */
 export async function extractResumeText(file: File): Promise<string> {
-  const lowerName = file.name.toLowerCase();
-
   logger.info("Resume text extraction started.", {
     fileName: file.name,
     fileType: file.type,
     fileSize: file.size,
   });
 
-  if (lowerName.endsWith(".txt") || file.type === "text/plain") {
-    return extractTxt(file);
+  const formData = new FormData();
+  formData.set("file", file);
+
+  const response = await fetch("/api/resume/parse", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let message = `Resume parsing failed (${response.status}).`;
+    try {
+      const errorPayload = (await response.json()) as { error?: unknown };
+      message = toErrorMessage(errorPayload?.error, message);
+    } catch {
+      // Ignore JSON parse failure and keep fallback message.
+    }
+    throw new Error(message);
   }
 
-  if (
-    lowerName.endsWith(".docx") ||
-    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  ) {
-    return extractDocx(file);
+  const payload = (await response.json()) as { resumeText?: string };
+  const text = normalizeText(payload.resumeText || "");
+
+  if (!text) {
+    throw new Error("Could not extract text from that file.");
   }
 
-  if (lowerName.endsWith(".pdf") || file.type === "application/pdf") {
-    return extractPdf(file);
-  }
-
-  throw new Error("Unsupported resume format. Please use PDF, DOCX, or TXT.");
+  return text;
 }
