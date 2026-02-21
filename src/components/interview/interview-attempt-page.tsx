@@ -130,7 +130,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     }
   };
 
-  const streamAssistantMessage = useCallback(async (message: string) => {
+  const streamAssistantMessage = async (message: string) => {
     if (streamTimerRef.current) {
       window.clearInterval(streamTimerRef.current);
       streamTimerRef.current = null;
@@ -157,7 +157,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
         }
       }, 18);
     });
-  }, []);
+  };
 
   const requestNextTurn = async (transcript: TranscriptTurn[]) => {
     if (!attempt.script) {
