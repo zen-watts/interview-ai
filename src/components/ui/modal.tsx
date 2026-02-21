@@ -16,8 +16,8 @@ export function Modal({
   widthClassName?: string;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4" role="dialog" aria-modal>
-      <div className={cn("w-full rounded-paper border border-paper-border bg-paper-bg p-6", widthClassName)}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/25 px-4 py-4" role="dialog" aria-modal>
+      <div className={cn("w-full max-h-[calc(100vh-2rem)] overflow-y-auto rounded-paper border border-paper-border bg-paper-bg p-6", widthClassName)}>
         <div className="mb-4 flex items-center justify-between gap-4">
           <h2 className="text-2xl text-paper-ink">{title}</h2>
           <button
