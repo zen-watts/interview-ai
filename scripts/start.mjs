@@ -30,7 +30,7 @@ function runVersionCheck(label, command, args = ["--version"]) {
   info(`Checking for ${label}...`);
   const result = spawnSync(command, args, {
     encoding: "utf-8",
-    shell: false,
+    shell: true,
   });
 
   if (result.error || result.status !== 0) {
@@ -77,7 +77,7 @@ function runInstall() {
   info("Running npm install to ensure dependencies are present...");
   const install = spawnSync(npmCommand, ["install"], {
     stdio: "inherit",
-    shell: false,
+    shell: true,
   });
 
   if (install.status !== 0) {
@@ -106,7 +106,7 @@ function runDevServer() {
   info("Starting dev server...");
   const child = spawn(npmCommand, ["run", "dev"], {
     stdio: ["inherit", "pipe", "pipe"],
-    shell: false,
+    shell: true,
   });
 
   let browserOpened = false;
