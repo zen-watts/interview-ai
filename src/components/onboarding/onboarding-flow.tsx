@@ -8,11 +8,10 @@ import { Card } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import { Notice } from "@/src/components/ui/notice";
-import { Select } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
 import { requestResumeSummary } from "@/src/lib/ai/client-api";
 import { createLogger } from "@/src/lib/logger";
-import { EXPERIENCE_LEVEL_OPTIONS } from "@/src/lib/types";
+import type { UserProfile } from "@/src/lib/types";
 import { extractResumeText } from "@/src/lib/utils/resume-parser";
 
 const logger = createLogger("onboarding");
@@ -41,15 +40,19 @@ function toErrorMessage(error: unknown, fallback: string) {
 interface ProfileDraft {
   name: string;
   targetJob: string;
-  experienceLevel: (typeof EXPERIENCE_LEVEL_OPTIONS)[number]["value"];
+  experienceLevel: UserProfile["experienceLevel"];
+  age: string;
+  pronouns: string;
   resumeText: string;
   resumeSummary: string;
 }
 
 const initialDraft: ProfileDraft = {
   name: "",
-  targetJob: "",
+  targetJob: "Defined per role",
   experienceLevel: "new_grad",
+  age: "",
+  pronouns: "",
   resumeText: "",
   resumeSummary: "",
 };
@@ -65,8 +68,8 @@ export function OnboardingFlow() {
   const [uploading, setUploading] = useState(false);
 
   const canFinish = useMemo(() => {
-    return draft.name.trim().length > 0 && draft.targetJob.trim().length > 0;
-  }, [draft.name, draft.targetJob]);
+    return draft.name.trim().length > 0;
+  }, [draft.name]);
 
   const nextStep = () => {
     setError(null);
@@ -136,15 +139,29 @@ export function OnboardingFlow() {
   };
 
   const handleFinish = () => {
+    const normalizedAge = draft.age.trim();
+    let parsedAge: number | null = null;
+
+    if (normalizedAge) {
+      const candidateAge = Number.parseInt(normalizedAge, 10);
+      if (!Number.isInteger(candidateAge) || candidateAge < 1 || candidateAge > 120) {
+        setError("Age must be a whole number between 1 and 120, or left empty.");
+        return;
+      }
+      parsedAge = candidateAge;
+    }
+
     if (!canFinish) {
-      setError("Please enter your name and the job you are targeting.");
+      setError("Please enter your name.");
       return;
     }
 
     saveProfile({
       name: draft.name.trim(),
-      targetJob: draft.targetJob.trim(),
+      targetJob: draft.targetJob.trim() || "Defined per role",
       experienceLevel: draft.experienceLevel,
+      age: parsedAge,
+      pronouns: draft.pronouns.trim(),
       resumeText: draft.resumeText,
       resumeSummary: draft.resumeSummary.trim(),
     });
@@ -217,46 +234,40 @@ export function OnboardingFlow() {
           <div className="space-y-5">
             <h2 className="text-3xl leading-tight">Confirm your profile</h2>
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="profile-name">Name</Label>
-                <Input
-                  id="profile-name"
-                  value={draft.name}
-                  onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-                  placeholder="Jane Candidate"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="profile-job">Job you are looking for</Label>
-                <Input
-                  id="profile-job"
-                  value={draft.targetJob}
-                  onChange={(event) => setDraft((current) => ({ ...current, targetJob: event.target.value }))}
-                  placeholder="Product Manager"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="profile-name">Name</Label>
+              <Input
+                id="profile-name"
+                value={draft.name}
+                onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+                placeholder="Jane Candidate"
+              />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="profile-level">Experience level in this industry</Label>
-              <Select
-                id="profile-level"
-                value={draft.experienceLevel}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    experienceLevel: event.target.value as ProfileDraft["experienceLevel"],
-                  }))
-                }
-              >
-                {EXPERIENCE_LEVEL_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="profile-age">Age (optional)</Label>
+                <Input
+                  id="profile-age"
+                  type="number"
+                  min={1}
+                  max={120}
+                  inputMode="numeric"
+                  value={draft.age}
+                  onChange={(event) => setDraft((current) => ({ ...current, age: event.target.value }))}
+                  placeholder="29"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="profile-pronouns">Pronouns (optional)</Label>
+                <Input
+                  id="profile-pronouns"
+                  value={draft.pronouns}
+                  onChange={(event) => setDraft((current) => ({ ...current, pronouns: event.target.value }))}
+                  placeholder="she/her, he/him, they/them"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
