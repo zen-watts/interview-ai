@@ -62,7 +62,7 @@ export function HomePage() {
                   </div>
 
                   <p className="text-paper-softInk">
-                    {role.roleDescription || role.organizationDescription || "No additional role notes yet."}
+                    {role.organizationName || role.organizationDescription || "No additional role notes yet."}
                   </p>
 
                   <p className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">

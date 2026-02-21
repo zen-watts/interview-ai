@@ -29,10 +29,9 @@ const bodySchema = z.object({
   role: z.object({
     id: z.string().min(1),
     title: z.string().min(1),
-    roleDescription: z.string(),
+    organizationName: z.string(),
     organizationDescription: z.string(),
     fullJobDescription: z.string(),
-    additionalContext: z.string(),
     createdAt: z.string(),
     updatedAt: z.string(),
   }),

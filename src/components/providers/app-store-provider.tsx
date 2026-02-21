@@ -30,10 +30,9 @@ const logger = createLogger("store-provider");
 
 interface RoleInput {
   title: string;
-  roleDescription: string;
+  organizationName: string;
   organizationDescription: string;
   fullJobDescription: string;
-  additionalContext: string;
 }
 
 interface ProfileInput {
@@ -110,10 +109,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const role: RoleProfile = {
       id: createId(),
       title: input.title.trim(),
-      roleDescription: input.roleDescription.trim(),
+      organizationName: input.organizationName.trim(),
       organizationDescription: input.organizationDescription.trim(),
       fullJobDescription: input.fullJobDescription.trim(),
-      additionalContext: input.additionalContext.trim(),
       createdAt: now,
       updatedAt: now,
     };
@@ -140,10 +138,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const updatedRole = {
           ...role,
           title: input.title.trim(),
-          roleDescription: input.roleDescription.trim(),
+          organizationName: input.organizationName.trim(),
           organizationDescription: input.organizationDescription.trim(),
           fullJobDescription: input.fullJobDescription.trim(),
-          additionalContext: input.additionalContext.trim(),
           updatedAt: nowIso(),
         };
 

@@ -4,11 +4,10 @@ import {
   EXPERIENCE_LEVEL_OPTIONS,
   INTERVIEW_CATEGORY_OPTIONS,
   type AppStore,
-  type AppStoreV1,
 } from "@/src/lib/types";
 
 export const STORAGE_KEY = "interview_ai_v1";
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 const experienceLevelValues = EXPERIENCE_LEVEL_OPTIONS.map((option) => option.value) as [
   (typeof EXPERIENCE_LEVEL_OPTIONS)[number]["value"],
@@ -27,13 +26,23 @@ const profileSchema = z.object({
   updatedAt: z.string(),
 });
 
-const roleSchema = z.object({
+const roleSchemaV1 = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   roleDescription: z.string(),
   organizationDescription: z.string(),
   fullJobDescription: z.string(),
   additionalContext: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const roleSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  organizationName: z.string(),
+  organizationDescription: z.string(),
+  fullJobDescription: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -77,15 +86,22 @@ const attemptSchema = z.object({
 const appStoreV1Schema = z.object({
   schemaVersion: z.literal(1),
   profile: profileSchema.nullable(),
+  roles: z.array(roleSchemaV1),
+  attempts: z.array(attemptSchema),
+});
+
+const appStoreV2Schema = z.object({
+  schemaVersion: z.literal(2),
+  profile: profileSchema.nullable(),
   roles: z.array(roleSchema),
   attempts: z.array(attemptSchema),
 });
 
-export const appStoreSchema = appStoreV1Schema;
+export const appStoreSchema = appStoreV2Schema;
 
-export function createEmptyStore(): AppStoreV1 {
+export function createEmptyStore(): AppStore {
   return {
-    schemaVersion: CURRENT_SCHEMA_VERSION,
+    schemaVersion: 2 as const,
     profile: null,
     roles: [],
     attempts: [],
@@ -99,12 +115,33 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
 
   const value = rawValue as { schemaVersion?: number };
 
-  if (value.schemaVersion === 1) {
-    const parsed = appStoreSchema.safeParse(value);
+  if (value.schemaVersion === 2) {
+    const parsed = appStoreV2Schema.safeParse(value);
     if (parsed.success) {
       return parsed.data;
     }
+    return createEmptyStore();
+  }
 
+  if (value.schemaVersion === 1) {
+    const parsed = appStoreV1Schema.safeParse(value);
+    if (parsed.success) {
+      const v1 = parsed.data;
+      return {
+        schemaVersion: 2 as const,
+        profile: v1.profile,
+        roles: v1.roles.map((role) => ({
+          id: role.id,
+          title: role.title,
+          organizationName: "",
+          organizationDescription: role.organizationDescription,
+          fullJobDescription: role.fullJobDescription,
+          createdAt: role.createdAt,
+          updatedAt: role.updatedAt,
+        })),
+        attempts: v1.attempts,
+      };
+    }
     return createEmptyStore();
   }
 

@@ -24,17 +24,15 @@ const statusCopy: Record<string, string> = {
 
 function toRoleFormValues(values: {
   title: string;
-  roleDescription: string;
+  organizationName: string;
   organizationDescription: string;
   fullJobDescription: string;
-  additionalContext: string;
 }): RoleFormValues {
   return {
     title: values.title,
-    roleDescription: values.roleDescription,
+    organizationName: values.organizationName,
     organizationDescription: values.organizationDescription,
     fullJobDescription: values.fullJobDescription,
-    additionalContext: values.additionalContext,
   };
 }
 
@@ -83,7 +81,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
           </Link>
           <h1 className="text-4xl leading-tight">{role.title}</h1>
           <p className="max-w-3xl text-paper-softInk">
-            {role.roleDescription || role.organizationDescription || "Add context in settings to personalize interviews."}
+            {role.organizationName || role.organizationDescription || "Add context in settings to personalize interviews."}
           </p>
         </div>
 

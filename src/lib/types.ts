@@ -41,10 +41,9 @@ export interface UserProfile {
 export interface RoleProfile {
   id: string;
   title: string;
-  roleDescription: string;
+  organizationName: string;
   organizationDescription: string;
   fullJobDescription: string;
-  additionalContext: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -92,4 +91,11 @@ export interface AppStoreV1 {
   attempts: InterviewAttempt[];
 }
 
-export type AppStore = AppStoreV1;
+export interface AppStoreV2 {
+  schemaVersion: 2;
+  profile: UserProfile | null;
+  roles: RoleProfile[];
+  attempts: InterviewAttempt[];
+}
+
+export type AppStore = AppStoreV2;

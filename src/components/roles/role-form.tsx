@@ -10,18 +10,16 @@ import { Notice } from "@/src/components/ui/notice";
 
 export interface RoleFormValues {
   title: string;
-  roleDescription: string;
+  organizationName: string;
   organizationDescription: string;
   fullJobDescription: string;
-  additionalContext: string;
 }
 
 export const emptyRoleFormValues: RoleFormValues = {
   title: "",
-  roleDescription: "",
+  organizationName: "",
   organizationDescription: "",
   fullJobDescription: "",
-  additionalContext: "",
 };
 
 export function RoleForm({
@@ -57,7 +55,7 @@ export function RoleForm({
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
       <div className="space-y-2">
-        <Label htmlFor="role-title">Title</Label>
+        <Label htmlFor="role-title">Role Title</Label>
         <Input
           id="role-title"
           value={values.title}
@@ -68,18 +66,17 @@ export function RoleForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="role-description">Role description</Label>
-        <Textarea
-          id="role-description"
-          value={values.roleDescription}
+        <Label htmlFor="org-name">Organization name</Label>
+        <Input
+          id="org-name"
+          value={values.organizationName}
           onChange={(event) =>
             setValues((current) => ({
               ...current,
-              roleDescription: event.target.value,
+              organizationName: event.target.value,
             }))
           }
-          rows={3}
-          placeholder="What does this role focus on day to day?"
+          placeholder="Acme Corp"
         />
       </div>
 
@@ -112,22 +109,6 @@ export function RoleForm({
           }
           rows={6}
           placeholder="Paste the full JD here"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="extra-context">Anything else to know about this role?</Label>
-        <Textarea
-          id="extra-context"
-          value={values.additionalContext}
-          onChange={(event) =>
-            setValues((current) => ({
-              ...current,
-              additionalContext: event.target.value,
-            }))
-          }
-          rows={4}
-          placeholder="Interview panel notes, culture fit concerns, anything useful"
         />
       </div>
 
