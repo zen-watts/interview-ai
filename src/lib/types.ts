@@ -32,6 +32,8 @@ export interface UserProfile {
   name: string;
   targetJob: string;
   experienceLevel: ExperienceLevel;
+  age: number | null;
+  pronouns: string;
   resumeText: string;
   resumeSummary: string;
   createdAt: string;

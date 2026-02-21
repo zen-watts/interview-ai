@@ -31,6 +31,8 @@ export function buildScriptGenerationUserPrompt(input: {
     "",
     "Candidate Profile:",
     `- Name: ${profile.name}`,
+    `- Age: ${profile.age ?? "(not provided)"}`,
+    `- Pronouns: ${profile.pronouns || "(not provided)"}`,
     `- Target job: ${profile.targetJob}`,
     `- Experience level: ${profile.experienceLevel}`,
     `- Resume summary: ${profile.resumeSummary || "(none)"}`,

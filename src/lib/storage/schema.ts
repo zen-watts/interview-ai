@@ -21,6 +21,8 @@ const profileSchema = z.object({
   name: z.string().min(1),
   targetJob: z.string().min(1),
   experienceLevel: z.enum(experienceLevelValues),
+  age: z.number().int().min(1).max(120).nullable().optional(),
+  pronouns: z.string().optional(),
   resumeText: z.string(),
   resumeSummary: z.string(),
   createdAt: z.string(),
@@ -112,6 +114,13 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
     if (parsed.success) {
       return {
         ...parsed.data,
+        profile: parsed.data.profile
+          ? {
+              ...parsed.data.profile,
+              age: parsed.data.profile.age ?? null,
+              pronouns: parsed.data.profile.pronouns ?? "",
+            }
+          : null,
         devSettings: {
           showInterviewerScriptOnConclusion: parsed.data.devSettings?.showInterviewerScriptOnConclusion ?? false,
         },
