@@ -61,6 +61,10 @@ const analysisSchema = z.object({
   top_improvement: z.string(),
 });
 
+const devSettingsSchema = z.object({
+  showInterviewerScriptOnConclusion: z.boolean(),
+});
+
 const attemptSchema = z.object({
   id: z.string().min(1),
   roleId: z.string().min(1),
@@ -79,6 +83,7 @@ const appStoreV1Schema = z.object({
   profile: profileSchema.nullable(),
   roles: z.array(roleSchema),
   attempts: z.array(attemptSchema),
+  devSettings: devSettingsSchema.optional(),
 });
 
 export const appStoreSchema = appStoreV1Schema;
@@ -89,6 +94,9 @@ export function createEmptyStore(): AppStoreV1 {
     profile: null,
     roles: [],
     attempts: [],
+    devSettings: {
+      showInterviewerScriptOnConclusion: false,
+    },
   };
 }
 
@@ -102,7 +110,12 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
   if (value.schemaVersion === 1) {
     const parsed = appStoreSchema.safeParse(value);
     if (parsed.success) {
-      return parsed.data;
+      return {
+        ...parsed.data,
+        devSettings: {
+          showInterviewerScriptOnConclusion: parsed.data.devSettings?.showInterviewerScriptOnConclusion ?? false,
+        },
+      };
     }
 
     return createEmptyStore();

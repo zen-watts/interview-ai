@@ -85,11 +85,16 @@ export interface InterviewAttempt {
   updatedAt: string;
 }
 
+export interface DevSettings {
+  showInterviewerScriptOnConclusion: boolean;
+}
+
 export interface AppStoreV1 {
   schemaVersion: 1;
   profile: UserProfile | null;
   roles: RoleProfile[];
   attempts: InterviewAttempt[];
+  devSettings: DevSettings;
 }
 
 export type AppStore = AppStoreV1;
