@@ -1,11 +1,8 @@
 import "server-only";
 
-import { createRequire } from "node:module";
-
 import { createLogger } from "@/src/lib/logger";
 
 const logger = createLogger("resume-parser-server");
-const require = createRequire(import.meta.url);
 
 function normalizeText(value: string) {
   return value.replace(/\s+/g, " ").trim();
@@ -24,10 +21,45 @@ async function extractDocx(file: File) {
 }
 
 async function extractPdf(file: File) {
-  const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (input: Buffer | Uint8Array) => Promise<{ text: string }>;
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const result = await pdfParse(buffer);
-  return normalizeText(result.text || "");
+  type PdfJsTextItem = { str?: string };
+  type PdfJsModule = {
+    getDocument: (options: { data: Uint8Array; disableWorker?: boolean }) => {
+      promise: Promise<{
+        numPages: number;
+        getPage: (pageNumber: number) => Promise<{
+          getTextContent: () => Promise<{ items: PdfJsTextItem[] }>;
+        }>;
+      }>;
+    };
+  };
+
+  const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as PdfJsModule;
+  const buffer = await file.arrayBuffer();
+  const loadingTask = pdfjs.getDocument({
+    data: new Uint8Array(buffer),
+    disableWorker: true,
+  });
+
+  const pdf = await loadingTask.promise;
+  const pages: string[] = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    const pageText = content.items
+      .map((item) => {
+        if ("str" in item) {
+          return item.str;
+        }
+
+        return "";
+      })
+      .join(" ");
+
+    pages.push(pageText);
+  }
+
+  return normalizeText(pages.join("\n"));
 }
 
 /**
