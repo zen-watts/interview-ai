@@ -1,0 +1,75 @@
+# ===== Dependencies =====
+node_modules/
+.pnp/
+.pnp.js
+
+# ===== Next.js =====
+.next/
+out/
+.vercel/
+.next/cache/
+
+# ===== Builds / Coverage =====
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# ===== Logs =====
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ===== Env files (secrets) =====
+.env
+.env.*.local
+.env.local
+
+# Keep example env files
+!.env.example
+
+# ===== OS files =====
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ===== IDE / Editor =====
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# ===== TypeScript / ESLint caches =====
+.eslintcache
+.cache/
+
+# ===== Package manager =====
+.yarn/
+.yarnrc.yml
+pnpm-store/
+.npmrc
+
+# ===== Misc =====
+*.swp
+*.swo
