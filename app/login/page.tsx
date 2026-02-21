@@ -3,13 +3,21 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { DEV_AUTH_COOKIE, isSupabaseConfigured } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 
 type AuthMode = "signin" | "signup";
 
+/**
+ * Login page with two modes:
+ * - Supabase mode (when env vars are configured): uses email/password auth APIs.
+ * - Local dev mode (no Supabase yet): writes a local auth cookie for fast local iteration.
+ */
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
+  const supabaseEnabled = isSupabaseConfigured();
+  // Only create a browser client when Supabase is configured.
+  const supabase = useMemo(() => (supabaseEnabled ? createClient() : null), [supabaseEnabled]);
 
   const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
@@ -22,6 +30,16 @@ export default function LoginPage() {
     setLoading(true);
     setMessage("");
 
+    // Fallback auth path used during early development without Supabase.
+    if (!supabaseEnabled || !supabase) {
+      document.cookie = `${DEV_AUTH_COOKIE}=${encodeURIComponent(email)}; Path=/; Max-Age=604800; SameSite=Lax`;
+      router.push("/dashboard");
+      router.refresh();
+      setLoading(false);
+      return;
+    }
+
+    // Standard sign-in path against Supabase Auth.
     if (mode === "signin") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -36,6 +54,7 @@ export default function LoginPage() {
       return;
     }
 
+    // Standard sign-up path against Supabase Auth.
     const { data, error } = await supabase.auth.signUp({ email, password });
 
     if (error) {
@@ -54,6 +73,7 @@ export default function LoginPage() {
     <main>
       <h1>Login</h1>
       <p>Sign in or create an account with email + password.</p>
+      {!supabaseEnabled ? <p>Local dev auth mode is enabled (Supabase not configured).</p> : null}
 
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12, maxWidth: 360 }}>
         <label htmlFor="email">Email</label>

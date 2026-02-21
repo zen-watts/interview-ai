@@ -1,6 +1,10 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+/**
+ * Creates a Supabase server client bound to the current request cookies.
+ * Uses only public env vars (no service role key) for auth/session operations.
+ */
 export async function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -11,6 +15,7 @@ export async function createClient() {
 
   const cookieStore = await cookies();
 
+  // Wire Next.js cookie APIs into Supabase SSR client so auth sessions can be read/written.
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name: string) {
@@ -20,14 +25,14 @@ export async function createClient() {
         try {
           cookieStore.set({ name, value, ...options });
         } catch {
-          // Ignore when called from a Server Component.
+          // Server Components are read-only for response cookies.
         }
       },
       remove(name: string, options: CookieOptions) {
         try {
           cookieStore.set({ name, value: "", ...options, maxAge: 0 });
         } catch {
-          // Ignore when called from a Server Component.
+          // Server Components are read-only for response cookies.
         }
       },
     },

@@ -2,6 +2,21 @@
 
 Minimal Next.js + TypeScript + Supabase Auth/Postgres starter.
 
+## Quick local mode (no Supabase yet)
+
+If Supabase env vars are not set, the app uses a local dev auth cookie so you can still:
+
+- open `/login`
+- sign in/sign up locally
+- access `/dashboard`
+- log out
+
+Run with:
+
+```bash
+npm start
+```
+
 ## 1) Create Supabase project
 
 Copy your project values from Supabase:
