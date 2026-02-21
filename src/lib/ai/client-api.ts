@@ -37,7 +37,7 @@ export async function requestInterviewScript(input: {
   role: RoleProfile;
   config: InterviewConfig;
 }): Promise<string> {
-  logger.info("request.script.start", {
+  logger.info("Starting interview script generation.", {
     roleId: input.role.id,
     questionCount: input.config.primaryQuestionCount,
   });
@@ -52,12 +52,12 @@ export async function requestInterviewScript(input: {
 
   if (!response.ok) {
     const message = await readErrorMessage(response);
-    logger.error("request.script.failed", { message });
+    logger.error("Interview script generation failed.", { message });
     throw new Error(message);
   }
 
   const payload = (await response.json()) as { script: string };
-  logger.info("request.script.success", { scriptLength: payload.script.length });
+  logger.info("Interview script generated.", { scriptLength: payload.script.length });
   return payload.script;
 }
 
@@ -69,7 +69,7 @@ export async function requestInterviewTurn(input: {
   transcript: TranscriptTurn[];
   primaryQuestionCount: number;
 }): Promise<{ message: string; isEnd: boolean }> {
-  logger.debug("request.turn.start", {
+  logger.debug("Requesting next interviewer turn.", {
     transcriptLength: input.transcript.length,
   });
 
@@ -83,12 +83,12 @@ export async function requestInterviewTurn(input: {
 
   if (!response.ok) {
     const message = await readErrorMessage(response);
-    logger.error("request.turn.failed", { message });
+    logger.error("Next interviewer turn request failed.", { message });
     throw new Error(message);
   }
 
   const payload = (await response.json()) as { message: string; isEnd: boolean };
-  logger.debug("request.turn.success", { isEnd: payload.isEnd });
+  logger.debug("Received next interviewer turn.", { isEnd: payload.isEnd });
 
   return payload;
 }
@@ -100,7 +100,7 @@ export async function requestInterviewAnalysis(input: {
   script: string;
   transcript: TranscriptTurn[];
 }): Promise<InterviewAnalysis> {
-  logger.info("request.analysis.start", {
+  logger.info("Starting interview analysis generation.", {
     transcriptLength: input.transcript.length,
   });
 
@@ -114,12 +114,12 @@ export async function requestInterviewAnalysis(input: {
 
   if (!response.ok) {
     const message = await readErrorMessage(response);
-    logger.error("request.analysis.failed", { message });
+    logger.error("Interview analysis generation failed.", { message });
     throw new Error(message);
   }
 
   const payload = (await response.json()) as InterviewAnalysis;
-  logger.info("request.analysis.success", { redFlagCount: payload.red_flags.length });
+  logger.info("Interview analysis generated.", { redFlagCount: payload.red_flags.length });
 
   return payload;
 }
@@ -128,7 +128,7 @@ export async function requestInterviewAnalysis(input: {
  * Calls the server route that summarizes resume text and returns profile autofill suggestions.
  */
 export async function requestResumeSummary(resumeText: string): Promise<ResumeSummaryPayload> {
-  logger.info("request.resume.start", { charCount: resumeText.length });
+  logger.info("Starting resume summary generation.", { charCount: resumeText.length });
 
   const response = await fetch("/api/ai/resume", {
     method: "POST",
@@ -140,12 +140,12 @@ export async function requestResumeSummary(resumeText: string): Promise<ResumeSu
 
   if (!response.ok) {
     const message = await readErrorMessage(response);
-    logger.error("request.resume.failed", { message });
+    logger.error("Resume summary generation failed.", { message });
     throw new Error(message);
   }
 
   const payload = (await response.json()) as ResumeSummaryPayload;
-  logger.info("request.resume.success", {
+  logger.info("Resume summary generated.", {
     hasName: Boolean(payload.name),
     hasTargetJob: Boolean(payload.targetJob),
   });

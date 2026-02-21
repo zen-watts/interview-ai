@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const parsed = bodySchema.safeParse(json);
 
     if (!parsed.success) {
-      logger.warn("request.invalid", { issues: parsed.error.issues });
+      logger.warn("Interview analysis request validation failed.", { issues: parsed.error.issues });
       return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
     }
 
@@ -58,21 +58,21 @@ export async function POST(request: Request) {
     const outputText = response.output_text?.trim() || "";
 
     if (!outputText) {
-      logger.error("response.empty", { responseId: response.id });
+      logger.error("Interview analysis returned an empty response.", { responseId: response.id });
       return NextResponse.json({ error: "Model returned empty analysis" }, { status: 502 });
     }
 
     const jsonText = extractJsonObject(outputText);
     const analysis = analysisOutputSchema.parse(parseJson<unknown>(jsonText));
 
-    logger.info("response.success", {
+    logger.info("Interview analysis generated successfully.", {
       responseId: response.id,
       redFlagCount: analysis.red_flags.length,
     });
 
     return NextResponse.json(analysis);
   } catch (error) {
-    logger.error("request.failed", {
+    logger.error("Interview analysis request failed.", {
       message: error instanceof Error ? error.message : "Unknown server error",
     });
 

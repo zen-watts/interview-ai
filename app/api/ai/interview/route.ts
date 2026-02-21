@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const parsed = bodySchema.safeParse(json);
 
     if (!parsed.success) {
-      logger.warn("request.invalid", { issues: parsed.error.issues });
+      logger.warn("Interview turn request validation failed.", { issues: parsed.error.issues });
       return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
     }
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     const maxAssistantTurns = parsed.data.primaryQuestionCount * 5;
 
     if (assistantTurnCount >= maxAssistantTurns) {
-      logger.warn("response.forced_end", {
+      logger.warn("Interview reached turn safety limit and was force-ended.", {
         assistantTurnCount,
         maxAssistantTurns,
       });
@@ -71,13 +71,13 @@ export async function POST(request: Request) {
     const message = response.output_text?.trim() || "";
 
     if (!message) {
-      logger.error("response.empty", { responseId: response.id });
+      logger.error("Interview turn generation returned an empty response.", { responseId: response.id });
       return NextResponse.json({ error: "Model returned an empty interviewer turn" }, { status: 502 });
     }
 
     const isEnd = message === END_TOKEN || hasEndToken(message);
 
-    logger.info("response.success", {
+    logger.info("Interview turn generated successfully.", {
       responseId: response.id,
       isEnd,
       messageLength: message.length,
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       isEnd,
     });
   } catch (error) {
-    logger.error("request.failed", {
+    logger.error("Interview turn request failed.", {
       message: error instanceof Error ? error.message : "Unknown server error",
     });
 

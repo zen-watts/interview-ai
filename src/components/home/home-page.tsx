@@ -28,11 +28,13 @@ export function HomePage() {
         </p>
       </header>
 
-      <div className="flex flex-wrap gap-3">
-        <Button type="button" onClick={() => setIsCreateOpen(true)}>
-          {roles.length === 0 ? "Create your first role" : "Create role"}
-        </Button>
-      </div>
+      {roles.length > 0 ? (
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" onClick={() => setIsCreateOpen(true)}>
+            Create role
+          </Button>
+        </div>
+      ) : null}
 
       {roles.length === 0 ? (
         <Card className="space-y-3">

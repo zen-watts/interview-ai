@@ -55,7 +55,7 @@ async function extractPdf(file: File) {
 export async function extractResumeText(file: File): Promise<string> {
   const lowerName = file.name.toLowerCase();
 
-  logger.info("extract.start", {
+  logger.info("Resume text extraction started.", {
     fileName: file.name,
     fileType: file.type,
     fileSize: file.size,

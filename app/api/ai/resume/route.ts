@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const parsed = bodySchema.safeParse(json);
 
     if (!parsed.success) {
-      logger.warn("request.invalid", { issues: parsed.error.issues });
+      logger.warn("Resume summary request validation failed.", { issues: parsed.error.issues });
       return NextResponse.json({ error: "Resume text is too short to summarize" }, { status: 400 });
     }
 
@@ -46,14 +46,14 @@ export async function POST(request: Request) {
     const outputText = response.output_text?.trim() || "";
 
     if (!outputText) {
-      logger.error("response.empty", { responseId: response.id });
+      logger.error("Resume summary returned an empty response.", { responseId: response.id });
       return NextResponse.json({ error: "Model returned empty resume summary" }, { status: 502 });
     }
 
     const jsonText = extractJsonObject(outputText);
     const summary = resumeOutputSchema.parse(parseJson<unknown>(jsonText));
 
-    logger.info("response.success", {
+    logger.info("Resume summary generated successfully.", {
       responseId: response.id,
       hasName: Boolean(summary.name),
       hasTargetJob: Boolean(summary.targetJob),
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(summary);
   } catch (error) {
-    logger.error("request.failed", {
+    logger.error("Resume summary request failed.", {
       message: error instanceof Error ? error.message : "Unknown server error",
     });
 

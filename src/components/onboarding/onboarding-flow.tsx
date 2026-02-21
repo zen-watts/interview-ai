@@ -79,7 +79,9 @@ export function OnboardingFlow() {
 
       if (resumeText.length < 50) {
         setStatusMessage("Resume text was captured, but it is too short to autofill profile fields.");
-        logger.warn("resume.short", { charCount: resumeText.length });
+        logger.warn("Resume text was extracted but is too short for reliable autofill.", {
+          charCount: resumeText.length,
+        });
         return;
       }
 
@@ -95,7 +97,7 @@ export function OnboardingFlow() {
       }));
 
       setStatusMessage("Resume uploaded. We autofilled fields below; you can edit everything.");
-      logger.info("resume.autofill.success", {
+      logger.info("Resume processed and profile fields autofilled.", {
         hasName: Boolean(summary.name),
         hasTargetJob: Boolean(summary.targetJob),
       });
@@ -103,7 +105,7 @@ export function OnboardingFlow() {
       const message = uploadError instanceof Error ? uploadError.message : "Resume upload failed.";
       setError(message);
       setStatusMessage(null);
-      logger.error("resume.upload.failed", { message });
+      logger.error("Resume upload or processing failed.", { message });
     } finally {
       setUploading(false);
     }
@@ -123,7 +125,7 @@ export function OnboardingFlow() {
       resumeSummary: draft.resumeSummary.trim(),
     });
 
-    logger.info("onboarding.complete", {
+    logger.info("Onboarding complete. User profile saved.", {
       hasResumeText: Boolean(draft.resumeText),
       hasResumeSummary: Boolean(draft.resumeSummary),
     });

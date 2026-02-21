@@ -69,7 +69,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const loaded = loadStore();
     setStore(loaded);
     setHydrated(true);
-    logger.info("hydrate.complete", {
+    logger.info("App state hydrated from local storage.", {
       roleCount: loaded.roles.length,
       attemptCount: loaded.attempts.length,
       hasProfile: Boolean(loaded.profile),
@@ -89,7 +89,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const now = nowIso();
       const createdAt = current.profile?.createdAt || now;
 
-      logger.info("profile.save", {
+      logger.info("User profile saved.", {
         hasResumeText: Boolean(input.resumeText),
         hasResumeSummary: Boolean(input.resumeSummary),
       });
@@ -119,7 +119,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     };
 
     setStore((current) => {
-      logger.info("role.create", { roleId: role.id, title: role.title });
+      logger.info("Role profile created.", { roleId: role.id, title: role.title });
 
       return {
         ...current,
@@ -147,7 +147,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           updatedAt: nowIso(),
         };
 
-        logger.info("role.update", { roleId: updatedRole.id, title: updatedRole.title });
+        logger.info("Role profile updated.", { roleId: updatedRole.id, title: updatedRole.title });
         return updatedRole;
       });
 
@@ -174,7 +174,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     };
 
     setStore((current) => {
-      logger.info("attempt.create", {
+      logger.info("Interview attempt created.", {
         attemptId: attempt.id,
         roleId,
         questionCount: config.primaryQuestionCount,
@@ -259,7 +259,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         lastError,
       });
 
-      logger.info("attempt.status", { attemptId, status, hasError: Boolean(lastError) });
+      logger.info("Interview attempt status updated.", {
+        attemptId,
+        status,
+        hasError: Boolean(lastError),
+      });
     },
     [patchAttempt],
   );
@@ -272,7 +276,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         lastError: null,
       });
 
-      logger.info("attempt.script.set", { attemptId, scriptLength: script.length });
+      logger.info("Interview script generated and saved.", { attemptId, scriptLength: script.length });
     },
     [patchAttempt],
   );
@@ -285,7 +289,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         lastError: null,
       });
 
-      logger.info("attempt.analysis.set", { attemptId, redFlagCount: analysis.red_flags.length });
+      logger.info("Interview analysis saved.", { attemptId, redFlagCount: analysis.red_flags.length });
     },
     [patchAttempt],
   );

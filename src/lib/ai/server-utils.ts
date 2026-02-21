@@ -17,7 +17,7 @@ export function parseJson<T>(text: string): T {
   try {
     return JSON.parse(text) as T;
   } catch (error) {
-    logger.error("json.parse.failed", {
+    logger.error("Model response could not be parsed as JSON.", {
       message: error instanceof Error ? error.message : "Unknown JSON parse error",
       text,
     });

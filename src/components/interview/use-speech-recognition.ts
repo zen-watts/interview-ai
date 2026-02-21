@@ -98,7 +98,7 @@ export function useSpeechRecognition(
 
     const durationSeconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
     setElapsedSec(durationSeconds);
-    logger.info("stop", { durationSeconds });
+    logger.info("Speech capture stopped.", { durationSeconds });
 
     return durationSeconds;
   }, [clearTimer]);
@@ -132,19 +132,19 @@ export function useSpeechRecognition(
 
         setElapsedSec(Math.max(0, Math.round((Date.now() - startedAt) / 1000)));
       }, 1000);
-      logger.info("start");
+      logger.info("Speech capture started.");
     };
 
     recognition.onend = () => {
       setListening(false);
       setInterimText("");
       clearTimer();
-      logger.debug("end");
+      logger.debug("Speech capture ended.");
     };
 
     recognition.onerror = (event) => {
       setLastError(event.error || "Speech recognition error");
-      logger.error("error", { error: event.error });
+      logger.error("Speech recognition reported an error.", { error: event.error });
     };
 
     recognition.onresult = (event) => {
@@ -194,7 +194,7 @@ export function useSpeechRecognition(
       recognitionRef.current.start();
     } catch (error) {
       setLastError(error instanceof Error ? error.message : "Could not start speech recognition.");
-      logger.error("start.failed", {
+      logger.error("Speech capture could not be started.", {
         message: error instanceof Error ? error.message : "Unknown speech start error",
       });
     }

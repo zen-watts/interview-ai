@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     const parsed = bodySchema.safeParse(json);
 
     if (!parsed.success) {
-      logger.warn("request.invalid", { issues: parsed.error.issues });
+      logger.warn("Script generation request validation failed.", { issues: parsed.error.issues });
       return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
     }
 
@@ -78,20 +78,20 @@ export async function POST(request: Request) {
     const script = response.output_text?.trim();
 
     if (!script) {
-      logger.error("response.empty", {
+      logger.error("Script generation returned an empty response.", {
         responseId: response.id,
       });
       return NextResponse.json({ error: "Model returned an empty script" }, { status: 502 });
     }
 
-    logger.info("response.success", {
+    logger.info("Interview script generated successfully.", {
       responseId: response.id,
       scriptLength: script.length,
     });
 
     return NextResponse.json({ script });
   } catch (error) {
-    logger.error("request.failed", {
+    logger.error("Script generation request failed.", {
       message: error instanceof Error ? error.message : "Unknown server error",
     });
 

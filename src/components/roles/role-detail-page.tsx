@@ -91,7 +91,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
           <Button variant="ghost" onClick={() => setEditOpen(true)}>
             Edit role
           </Button>
-          <Button onClick={() => setAttemptOpen(true)}>Create interview</Button>
+          {attempts.length > 0 ? <Button onClick={() => setAttemptOpen(true)}>Create interview</Button> : null}
         </div>
       </header>
 

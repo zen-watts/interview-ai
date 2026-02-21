@@ -21,14 +21,14 @@ export function loadStore(): AppStore {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      logger.info("load.empty");
+      logger.info("No saved app data found in local storage.");
       return createEmptyStore();
     }
 
     const parsed = JSON.parse(raw) as unknown;
     const migrated = migrateToCurrentSchema(parsed);
 
-    logger.info("load.success", {
+    logger.info("Loaded app data from local storage.", {
       roleCount: migrated.roles.length,
       attemptCount: migrated.attempts.length,
       hasProfile: Boolean(migrated.profile),
@@ -36,7 +36,7 @@ export function loadStore(): AppStore {
 
     return migrated;
   } catch (error) {
-    logger.error("load.failed", {
+    logger.error("Failed to load app data from local storage.", {
       message: error instanceof Error ? error.message : "Unknown localStorage error",
     });
 
@@ -51,13 +51,13 @@ export function persistStore(store: AppStore): void {
 
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-    logger.debug("persist.success", {
+    logger.debug("Saved app data to local storage.", {
       roleCount: store.roles.length,
       attemptCount: store.attempts.length,
       hasProfile: Boolean(store.profile),
     });
   } catch (error) {
-    logger.error("persist.failed", {
+    logger.error("Failed to save app data to local storage.", {
       message: error instanceof Error ? error.message : "Unknown localStorage error",
     });
   }

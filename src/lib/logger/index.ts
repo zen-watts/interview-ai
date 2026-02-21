@@ -7,7 +7,7 @@ interface LogPayload {
 const ROOT_PREFIX = "[InterviewAI]";
 
 function formatLine(module: string, level: LogLevel, event: string) {
-  return `${ROOT_PREFIX}[${module}][${level}] ${event}`;
+  return `${ROOT_PREFIX} [${level.toUpperCase()}] ${module}: ${event}`;
 }
 
 function emit(level: LogLevel, line: string, payload?: LogPayload) {
