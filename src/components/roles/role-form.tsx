@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
@@ -27,11 +27,13 @@ export function RoleForm({
   submitLabel,
   onSubmit,
   onCancel,
+  extraActions,
 }: {
   initialValues: RoleFormValues;
   submitLabel: string;
   onSubmit: (values: RoleFormValues) => void;
   onCancel: () => void;
+  extraActions?: ReactNode;
 }) {
   const [values, setValues] = useState<RoleFormValues>(initialValues);
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +94,7 @@ export function RoleForm({
             }))
           }
           rows={3}
-          placeholder="A short picture of team/company context"
+          placeholder="Share information about the organization"
         />
       </div>
 
@@ -108,19 +110,22 @@ export function RoleForm({
             }))
           }
           rows={6}
-          placeholder="Paste the full JD here"
+          placeholder="Paste full job description here"
         />
       </div>
 
       {error ? <Notice tone="error" message={error} /> : null}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={!canSubmit}>
-          {submitLabel}
-        </Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" disabled={!canSubmit}>
+            {submitLabel}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
+        {extraActions ? <div className="flex items-center">{extraActions}</div> : null}
       </div>
     </form>
   );

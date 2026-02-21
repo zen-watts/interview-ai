@@ -50,6 +50,7 @@ interface AppStoreContextValue {
   saveProfile: (input: ProfileInput) => void;
   createRole: (input: RoleInput) => RoleProfile;
   updateRole: (roleId: string, input: RoleInput) => void;
+  deleteRole: (roleId: string) => void;
   createAttempt: (roleId: string, config: InterviewConfig) => InterviewAttempt;
   patchAttempt: (attemptId: string, patch: Partial<InterviewAttempt>) => void;
   appendTranscriptTurn: (attemptId: string, turn: TranscriptTurn) => void;
@@ -153,6 +154,25 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       return {
         ...current,
         roles,
+      };
+    });
+  }, []);
+
+  const deleteRole = useCallback((roleId: string) => {
+    setStore((current) => {
+      const attemptsToRemove = current.attempts.filter((attempt) => attempt.roleId === roleId).length;
+      const nextRoles = current.roles.filter((role) => role.id !== roleId);
+      const nextAttempts = current.attempts.filter((attempt) => attempt.roleId !== roleId);
+
+      logger.info("Role profile deleted.", {
+        roleId,
+        removedAttempts: attemptsToRemove,
+      });
+
+      return {
+        ...current,
+        roles: nextRoles,
+        attempts: nextAttempts,
       };
     });
   }, []);
@@ -316,6 +336,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       saveProfile,
       createRole,
       updateRole,
+      deleteRole,
       createAttempt,
       patchAttempt,
       appendTranscriptTurn,
@@ -329,6 +350,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       appendTranscriptTurn,
       createAttempt,
       createRole,
+      deleteRole,
       hydrated,
       patchAttempt,
       replaceTranscript,
@@ -342,7 +364,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
+    return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
 }
 
 export function useAppStore() {

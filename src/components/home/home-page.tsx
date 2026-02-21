@@ -31,7 +31,8 @@ export function HomePage() {
       {roles.length > 0 ? (
         <div className="flex flex-wrap gap-3">
           <Button type="button" onClick={() => setIsCreateOpen(true)}>
-            Create role
+            <span>Create role</span>
+            <span className="ml-2 text-lg leading-none">+</span>
           </Button>
         </div>
       ) : null}
