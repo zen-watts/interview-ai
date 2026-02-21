@@ -1,16 +1,26 @@
-import { redirect } from "next/navigation";
+"use client";
 
-import { createClient } from "@/lib/supabase/server";
+import { HomePage } from "@/src/components/home/home-page";
+import { OnboardingFlow } from "@/src/components/onboarding/onboarding-flow";
+import { useAppStore } from "@/src/components/providers/app-store-provider";
+import { Card } from "@/src/components/ui/card";
 
-export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default function RootPage() {
+  const { hydrated, store } = useAppStore();
 
-  if (user) {
-    redirect("/dashboard");
+  if (!hydrated) {
+    return (
+      <main className="flex min-h-[80vh] items-center justify-center">
+        <Card>
+          <p className="text-paper-softInk">Loading your workspace...</p>
+        </Card>
+      </main>
+    );
   }
 
-  redirect("/login");
+  if (!store.profile) {
+    return <OnboardingFlow />;
+  }
+
+  return <HomePage />;
 }

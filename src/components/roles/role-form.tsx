@@ -1,0 +1,146 @@
+"use client";
+
+import { FormEvent, useMemo, useState } from "react";
+
+import { Button } from "@/src/components/ui/button";
+import { Input } from "@/src/components/ui/input";
+import { Label } from "@/src/components/ui/label";
+import { Textarea } from "@/src/components/ui/textarea";
+import { Notice } from "@/src/components/ui/notice";
+
+export interface RoleFormValues {
+  title: string;
+  roleDescription: string;
+  organizationDescription: string;
+  fullJobDescription: string;
+  additionalContext: string;
+}
+
+export const emptyRoleFormValues: RoleFormValues = {
+  title: "",
+  roleDescription: "",
+  organizationDescription: "",
+  fullJobDescription: "",
+  additionalContext: "",
+};
+
+export function RoleForm({
+  initialValues,
+  submitLabel,
+  onSubmit,
+  onCancel,
+}: {
+  initialValues: RoleFormValues;
+  submitLabel: string;
+  onSubmit: (values: RoleFormValues) => void;
+  onCancel: () => void;
+}) {
+  const [values, setValues] = useState<RoleFormValues>(initialValues);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSubmit = useMemo(() => values.title.trim().length > 0, [values.title]);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!canSubmit) {
+      setError("Role title is required.");
+      return;
+    }
+
+    onSubmit({
+      ...values,
+      title: values.title.trim(),
+    });
+  };
+
+  return (
+    <form className="space-y-5" onSubmit={handleSubmit}>
+      <div className="space-y-2">
+        <Label htmlFor="role-title">Title</Label>
+        <Input
+          id="role-title"
+          value={values.title}
+          onChange={(event) => setValues((current) => ({ ...current, title: event.target.value }))}
+          placeholder="Product Manager Intern"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="role-description">Role description</Label>
+        <Textarea
+          id="role-description"
+          value={values.roleDescription}
+          onChange={(event) =>
+            setValues((current) => ({
+              ...current,
+              roleDescription: event.target.value,
+            }))
+          }
+          rows={3}
+          placeholder="What does this role focus on day to day?"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="org-description">Organization description</Label>
+        <Textarea
+          id="org-description"
+          value={values.organizationDescription}
+          onChange={(event) =>
+            setValues((current) => ({
+              ...current,
+              organizationDescription: event.target.value,
+            }))
+          }
+          rows={3}
+          placeholder="A short picture of team/company context"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="job-description">Full job description</Label>
+        <Textarea
+          id="job-description"
+          value={values.fullJobDescription}
+          onChange={(event) =>
+            setValues((current) => ({
+              ...current,
+              fullJobDescription: event.target.value,
+            }))
+          }
+          rows={6}
+          placeholder="Paste the full JD here"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="extra-context">Anything else to know about this role?</Label>
+        <Textarea
+          id="extra-context"
+          value={values.additionalContext}
+          onChange={(event) =>
+            setValues((current) => ({
+              ...current,
+              additionalContext: event.target.value,
+            }))
+          }
+          rows={4}
+          placeholder="Interview panel notes, culture fit concerns, anything useful"
+        />
+      </div>
+
+      {error ? <Notice tone="error" message={error} /> : null}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" disabled={!canSubmit}>
+          {submitLabel}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
