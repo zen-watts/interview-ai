@@ -45,6 +45,7 @@ const roleSchema = z.object({
   organizationName: z.string(),
   organizationDescription: z.string(),
   fullJobDescription: z.string(),
+  isFavorited: z.boolean().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -137,6 +138,10 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
               pronouns: parsed.data.profile.pronouns ?? "",
             }
           : null,
+        roles: parsed.data.roles.map((role) => ({
+          ...role,
+          isFavorited: role.isFavorited ?? false,
+        })),
         devSettings: {
           showInterviewerScriptOnConclusion: parsed.data.devSettings?.showInterviewerScriptOnConclusion ?? false,
         },
@@ -158,6 +163,7 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
           organizationName: "",
           organizationDescription: role.organizationDescription,
           fullJobDescription: role.fullJobDescription,
+          isFavorited: false,
           createdAt: role.createdAt,
           updatedAt: role.updatedAt,
         })),

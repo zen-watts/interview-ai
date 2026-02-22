@@ -46,6 +46,7 @@ export interface RoleProfile {
   organizationName: string;
   organizationDescription: string;
   fullJobDescription: string;
+  isFavorited: boolean;
   createdAt: string;
   updatedAt: string;
 }
