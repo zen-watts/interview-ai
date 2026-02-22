@@ -387,6 +387,55 @@ textarea {
   animation: loadingDots 900ms steps(3, end) infinite;
 }
 
+@keyframes pageEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cardPop {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.page-enter {
+  animation: pageEnter 260ms ease-out both;
+}
+
+.card-pop {
+  animation: cardPop 260ms ease-out both;
+}
+
+.page-frame {
+  position: relative;
+}
+
+.page-frame::before {
+  content: "";
+  position: fixed;
+  inset: 18px;
+  border: 1px solid rgba(216, 205, 192, 0.55);
+  border-radius: 18px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.page-frame > * {
+  position: relative;
+  z-index: 1;
+}
+
 @keyframes interviewAmbienceDrift {
   0% {
     transform: translate3d(-3%, -2%, 0) scale(1);

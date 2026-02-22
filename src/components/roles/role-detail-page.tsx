@@ -78,7 +78,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
   }
 
   return (
-    <main className="space-y-8">
+    <main className="page-enter space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <h1 className="text-4xl leading-tight">{role.title}</h1>
@@ -101,7 +101,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
               className="text-left"
               onClick={() => setAttemptOpen(true)}
             >
-              <Card className="flex h-full flex-col items-center justify-center gap-3 transition hover:border-paper-accent">
+              <Card className="flex h-full flex-col items-center justify-center gap-3 transition-all duration-200 hover:-translate-y-1 hover:border-paper-accent hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
                 <span className="text-4xl leading-none text-paper-muted">+</span>
                 <span className="font-sans text-sm text-paper-muted">Create interview</span>
               </Card>
@@ -115,10 +115,12 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
                     : `/roles/${role.id}/attempts/${attempt.id}`
                 }
               >
-                <Card className={cn(
-                  "h-full space-y-4 transition hover:border-paper-accent",
-                  attempt.id === newlyCreatedAttemptId && "card-glow-border"
-                )}>
+                <Card
+                  className={cn(
+                    "h-full space-y-4 transition-all duration-200 hover:-translate-y-1 hover:border-paper-accent hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]",
+                    attempt.id === newlyCreatedAttemptId && "card-glow-border card-pop"
+                  )}
+                >
                   <div className="space-y-1">
                     <h3 className="text-xl">{attempt.config.categories.join(" · ")}</h3>
                     <p className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">
