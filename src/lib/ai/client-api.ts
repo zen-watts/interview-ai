@@ -42,12 +42,30 @@ export async function requestInterviewScript(input: {
     questionCount: input.config.primaryQuestionCount,
   });
 
+  const payload = {
+    profile: {
+      name: input.profile.name,
+      targetJob: input.profile.targetJob,
+      experienceLevel: input.profile.experienceLevel,
+      age: input.profile.age,
+      pronouns: input.profile.pronouns,
+      resumeSummary: input.profile.resumeSummary,
+    },
+    role: {
+      title: input.role.title,
+      organizationName: input.role.organizationName,
+      organizationDescription: input.role.organizationDescription,
+      fullJobDescription: input.role.fullJobDescription,
+    },
+    config: input.config,
+  };
+
   const response = await fetch("/api/ai/script", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(input),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -56,9 +74,9 @@ export async function requestInterviewScript(input: {
     throw new Error(message);
   }
 
-  const payload = (await response.json()) as { script: string };
-  logger.info("Interview script generated.", { scriptLength: payload.script.length });
-  return payload.script;
+  const responsePayload = (await response.json()) as { script: string };
+  logger.info("Interview script generated.", { scriptLength: responsePayload.script.length });
+  return responsePayload.script;
 }
 
 /**
@@ -68,7 +86,7 @@ export async function requestInterviewTurn(input: {
   script: string;
   transcript: TranscriptTurn[];
   primaryQuestionCount: number;
-}): Promise<{ message: string; isEnd: boolean }> {
+}): Promise<{ response: string; question: string; message: string; isEnd: boolean }> {
   logger.debug("Requesting next interviewer turn.", {
     transcriptLength: input.transcript.length,
   });
@@ -87,7 +105,12 @@ export async function requestInterviewTurn(input: {
     throw new Error(message);
   }
 
-  const payload = (await response.json()) as { message: string; isEnd: boolean };
+  const payload = (await response.json()) as {
+    response: string;
+    question: string;
+    message: string;
+    isEnd: boolean;
+  };
   logger.debug("Received next interviewer turn.", { isEnd: payload.isEnd });
 
   return payload;
@@ -148,6 +171,34 @@ export async function requestResumeSummary(resumeText: string): Promise<ResumeSu
   logger.info("Resume summary generated.", {
     hasName: Boolean(payload.name),
     hasTargetJob: Boolean(payload.targetJob),
+  });
+
+  return payload;
+}
+
+/**
+ * Calls the server route that generates interviewer TTS audio for a single question.
+ */
+export async function requestInterviewerSpeech(input: { text: string }): Promise<Blob> {
+  logger.info("interviewer.tts.request.started", { textLength: input.text.length });
+
+  const response = await fetch("/api/ai/tts", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const message = await readErrorMessage(response);
+    logger.warn("interviewer.tts.request.failed", { message });
+    throw new Error(message);
+  }
+
+  const payload = await response.blob();
+  logger.info("interviewer.tts.request.completed", {
+    byteLength: payload.size,
   });
 
   return payload;

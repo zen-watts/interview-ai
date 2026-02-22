@@ -66,31 +66,36 @@ export function AppBreadcrumbs() {
     return base;
   }, [pathname, store.roles]);
 
+  const isAnalysisPage = pathname.endsWith("/conclusion");
+
   if (!hydrated || !store.profile) {
     return null;
   }
 
   return (
-    <nav
-      aria-label="Breadcrumb"
-      className="mb-4 flex items-center gap-1 font-sans text-xs text-paper-muted opacity-80"
-    >
-      {crumbs.map((crumb, index) => {
-        const isCurrent = index === crumbs.length - 1;
+    <div className="mb-4 space-y-2">
+      <p className="text-xs uppercase tracking-[0.14em] text-paper-muted">Inner View</p>
+      <nav
+        aria-label="Breadcrumb"
+        className="flex min-h-[1.25rem] items-center gap-1 text-xs text-paper-muted opacity-80"
+      >
+        {crumbs.map((crumb, index) => {
+          const isCurrent = index === crumbs.length - 1;
 
-        return (
-          <div key={crumb.href} className="flex items-center gap-1">
-            {index > 0 ? <span>/</span> : null}
-            {isCurrent ? (
+          return (
+            <div key={crumb.href} className="flex items-center gap-1">
+              {index > 0 ? <span>/</span> : null}
+            {isCurrent || (isAnalysisPage && crumb.label === "Interview session") ? (
               <span className="text-paper-softInk">{crumb.label}</span>
             ) : (
-              <Link href={crumb.href} className="hover:text-paper-softInk">
-                {crumb.label}
-              </Link>
-            )}
-          </div>
-        );
-      })}
-    </nav>
+                <Link href={crumb.href} className="hover:text-paper-softInk">
+                  {crumb.label}
+                </Link>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

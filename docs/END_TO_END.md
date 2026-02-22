@@ -44,9 +44,10 @@ All data is persisted in browser `localStorage` using a typed schema and migrati
 3. App immediately generates and stores an interviewer script.
 4. User sees a pre-interview overlay with role + organization context and a single `Begin` action.
 5. Interview enters a dark, low-noise mode with only: current question, per-question timer, audio-reactive blob, and finish controls.
-6. User responds; each turn submission fades out the current question/timer, then fades in the next question with timer reset to `00:00`.
-7. Transcript is appended per turn and persisted continuously.
-8. Interview ends when assistant returns the strict end token, then UI collapses to `Interview Complete`.
+6. As each question appears, text animates in and optional interviewer TTS can play in parallel.
+7. User responds; each turn submission fades out the current question/timer, then fades in the next question with timer reset to `00:00`.
+8. Transcript is appended per turn and persisted continuously.
+9. Interview ends when assistant returns the strict end token, then UI collapses to `Interview Complete`.
 
 ### System behavior
 
@@ -102,6 +103,7 @@ No scores or ratings are used.
 - `POST /api/ai/resume`: resume summarization/autofill hints
 - `POST /api/ai/script`: interviewer script generation
 - `POST /api/ai/interview`: next-turn generation
+- `POST /api/ai/tts`: interviewer text-to-speech generation
 - `POST /api/ai/analysis`: post-interview analysis generation
 
 All API routes validate inputs, catch failures, and return clear error payloads.
@@ -109,7 +111,8 @@ All API routes validate inputs, catch failures, and return clear error payloads.
 ## Reliability and Fallbacks
 
 - Missing API key: app still renders and local workflows remain usable.
-- Unsupported speech recognition: user can type answers manually.
+- Missing ElevenLabs TTS configuration: interview continues with typed question display and no interviewer audio playback.
+- Unsupported speech recognition: voice capture is unavailable and the UI provides a retry/error path.
 - Resume parse failure: onboarding still continues with manual entry.
 - Model output validation failures are surfaced with actionable messages.
 

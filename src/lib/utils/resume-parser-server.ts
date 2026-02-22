@@ -21,45 +21,10 @@ async function extractDocx(file: File) {
 }
 
 async function extractPdf(file: File) {
-  type PdfJsTextItem = { str?: string };
-  type PdfJsModule = {
-    getDocument: (options: { data: Uint8Array; disableWorker?: boolean }) => {
-      promise: Promise<{
-        numPages: number;
-        getPage: (pageNumber: number) => Promise<{
-          getTextContent: () => Promise<{ items: PdfJsTextItem[] }>;
-        }>;
-      }>;
-    };
-  };
-
-  const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as PdfJsModule;
+  const pdfParse = (await import("pdf-parse")).default;
   const buffer = await file.arrayBuffer();
-  const loadingTask = pdfjs.getDocument({
-    data: new Uint8Array(buffer),
-    disableWorker: true,
-  });
-
-  const pdf = await loadingTask.promise;
-  const pages: string[] = [];
-
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const content = await page.getTextContent();
-    const pageText = content.items
-      .map((item) => {
-        if ("str" in item) {
-          return item.str;
-        }
-
-        return "";
-      })
-      .join(" ");
-
-    pages.push(pageText);
-  }
-
-  return normalizeText(pages.join("\n"));
+  const parsed = await pdfParse(Buffer.from(buffer));
+  return normalizeText(parsed.text || "");
 }
 
 /**

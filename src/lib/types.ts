@@ -25,6 +25,7 @@ export const PRONOUN_PRESET_OPTIONS = [
 
 export const INTERVIEW_CATEGORY_OPTIONS = [
   "Strictly Behavioral",
+  "Mix",
   "Technical Concepts",
   "Unhinged",
 ] as const;
@@ -47,6 +48,8 @@ export interface UserProfile {
   pronouns: string;
   resumeText: string;
   resumeSummary: string;
+  resumeEducation: string;
+  resumeExperience: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,11 +66,10 @@ export interface RoleProfile {
 }
 
 export interface InterviewConfig {
-  temperament: number;
-  questionDifficulty: number;
+  personaIntensity: number;
   followUpIntensity: number;
   primaryQuestionCount: number;
-  categories: InterviewCategory[];
+  category: InterviewCategory;
   notes: string;
 }
 
@@ -79,11 +81,19 @@ export interface TranscriptTurn {
   answerDurationSec?: number;
 }
 
+export interface CompetencyScore {
+  key: string;
+  label: string;
+  score: number;
+  evidence: string;
+}
+
 export interface InterviewAnalysis {
   impression_short: string;
   impression_long: string;
   red_flags: string[];
   top_improvement: string;
+  competencies?: CompetencyScore[];
 }
 
 export interface InterviewAttempt {
@@ -108,7 +118,6 @@ export interface AppStoreV1 {
   profile: UserProfile | null;
   roles: RoleProfile[];
   attempts: InterviewAttempt[];
-  devSettings: DevSettings;
 }
 
 export interface AppStoreV2 {

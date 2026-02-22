@@ -24,6 +24,8 @@ const profileSchema = z.object({
   pronouns: z.string().default(""),
   resumeText: z.string(),
   resumeSummary: z.string(),
+  resumeEducation: z.string().default(""),
+  resumeExperience: z.string().default(""),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -51,14 +53,14 @@ const roleSchema = z.object({
 });
 
 const configSchema = z.object({
-  temperament: z.number().min(0).max(100).default(25),
-  questionDifficulty: z.number().min(0).max(100).default(25),
   personaIntensity: z.number().min(0).max(100).optional(),
-  followUpIntensity: z.number().min(0).max(100),
-  primaryQuestionCount: z.number().min(1).max(10),
-  categories: z.array(z.enum(interviewCategoryValues)).min(1).default(["Strictly Behavioral"]),
-  category: z.enum(["Strictly Behavioral", "Mix", "Technical Concepts", "Unhinged"]).optional(),
-  notes: z.string(),
+  followUpIntensity: z.number().min(0).max(100).default(4),
+  primaryQuestionCount: z.number().min(1).max(10).default(4),
+  category: z.enum(interviewCategoryValues).optional(),
+  notes: z.string().default(""),
+  temperament: z.number().min(0).max(100).optional(),
+  questionDifficulty: z.number().min(0).max(100).optional(),
+  categories: z.array(z.enum(interviewCategoryValues)).min(1).optional(),
 });
 
 const transcriptTurnSchema = z.object({
@@ -74,6 +76,16 @@ const analysisSchema = z.object({
   impression_long: z.string(),
   red_flags: z.array(z.string()),
   top_improvement: z.string(),
+  competencies: z
+    .array(
+      z.object({
+        key: z.string(),
+        label: z.string(),
+        score: z.number(),
+        evidence: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 const devSettingsSchema = z.object({
@@ -112,6 +124,43 @@ const appStoreV2Schema = z.object({
 
 export const appStoreSchema = appStoreV2Schema;
 
+function normalizeInterviewCategory(input: {
+  category?: (typeof interviewCategoryValues)[number];
+  categories?: (typeof interviewCategoryValues)[number][];
+}) {
+  if (input.category) {
+    return input.category;
+  }
+
+  const categories = input.categories ?? [];
+  if (categories.length === 0) {
+    return "Strictly Behavioral" as const;
+  }
+
+  if (categories.includes("Unhinged")) {
+    return "Unhinged" as const;
+  }
+
+  if (categories.includes("Strictly Behavioral") && categories.includes("Technical Concepts")) {
+    return "Mix" as const;
+  }
+
+  return categories[0];
+}
+
+function normalizeAttemptConfig(config: z.infer<typeof configSchema>) {
+  return {
+    personaIntensity: config.personaIntensity ?? config.temperament ?? 3,
+    followUpIntensity: config.followUpIntensity,
+    primaryQuestionCount: config.primaryQuestionCount,
+    category: normalizeInterviewCategory({
+      category: config.category,
+      categories: config.categories,
+    }),
+    notes: config.notes,
+  };
+}
+
 export function createEmptyStore(): AppStore {
   return {
     schemaVersion: 2 as const,
@@ -141,11 +190,17 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
               ...parsed.data.profile,
               age: parsed.data.profile.age,
               pronouns: parsed.data.profile.pronouns,
+              resumeEducation: parsed.data.profile.resumeEducation ?? "",
+              resumeExperience: parsed.data.profile.resumeExperience ?? "",
             }
           : null,
         roles: parsed.data.roles.map((role) => ({
           ...role,
           isFavorited: role.isFavorited ?? false,
+        })),
+        attempts: parsed.data.attempts.map((attempt) => ({
+          ...attempt,
+          config: normalizeAttemptConfig(attempt.config),
         })),
         devSettings: parsed.data.devSettings,
       };
@@ -164,6 +219,8 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
               ...v1.profile,
               age: v1.profile.age ?? null,
               pronouns: v1.profile.pronouns ?? "",
+              resumeEducation: "",
+              resumeExperience: "",
             }
           : null,
         roles: v1.roles.map((role) => ({
@@ -176,7 +233,10 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
           createdAt: role.createdAt,
           updatedAt: role.updatedAt,
         })),
-        attempts: v1.attempts,
+        attempts: v1.attempts.map((attempt) => ({
+          ...attempt,
+          config: normalizeAttemptConfig(attempt.config),
+        })),
         devSettings: {
           showInterviewerScriptOnConclusion: false,
         },

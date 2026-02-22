@@ -35,11 +35,11 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get("file");
 
-    if (!(file instanceof File)) {
+    if (!file || typeof (file as { arrayBuffer?: unknown }).arrayBuffer !== "function") {
       return NextResponse.json({ error: "Expected a file upload under the 'file' field." }, { status: 400 });
     }
 
-    const resumeText = await extractResumeTextServer(file);
+    const resumeText = await extractResumeTextServer(file as File);
     return NextResponse.json({ resumeText });
   } catch (error) {
     const message = toErrorMessage(error);
