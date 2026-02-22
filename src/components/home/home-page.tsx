@@ -81,15 +81,28 @@ export function HomePage() {
 
   return (
     <main className="space-y-8">
-      <header>
-        <h1 className="text-4xl leading-tight md:text-5xl">Role Dashboard</h1>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-2">
+          <p className="font-sans text-xs uppercase tracking-[0.14em] text-paper-muted">Inner View</p>
+          <h1 className="text-4xl leading-tight md:text-5xl">Role Practice</h1>
+          <p className="max-w-2xl text-paper-softInk">
+            Build a role profile, generate an interviewer script, and practice realistic conversations.
+          </p>
+        </div>
+
+        <Link
+          href="/profile"
+          className="font-sans text-xs uppercase tracking-[0.14em] text-paper-muted hover:text-paper-ink"
+        >
+          Profile
+        </Link>
       </header>
 
       {!hasRoles ? (
         <Card className="space-y-3">
           <h2 className="text-2xl">No roles yet</h2>
           <p className="text-paper-softInk">
-            Start with one role context. You can add as much detail as you want and generate interview attempts under it.
+            Start with one role context. You can add as much detail as you want and generate practice sessions under it.
           </p>
           <Button type="button" onClick={() => setIsCreateOpen(true)}>
             Practice for your first role
