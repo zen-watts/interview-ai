@@ -17,6 +17,9 @@ export function buildAnalysisUserPrompt(input: {
 }): string {
   return [
     "Analyze this completed interview.",
+    "Keep language realistic, concise, and plain text only.",
+    "Do not use markdown styling or STAR section headings.",
+    "Do not require STAR; mention it only as an optional future tactic if relevant.",
     "",
     "Interviewer Script:",
     input.script,

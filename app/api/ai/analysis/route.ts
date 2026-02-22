@@ -25,6 +25,26 @@ const bodySchema = z.object({
   ),
 });
 
+function sanitizePlainText(text: string) {
+  return text
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function normalizeAnalysisText(value: string) {
+  return sanitizePlainText(value).replace(/(^|\n)\s*(STAR|SITUATION|TASK|ACTION|RESULT)\s*:\s*/gi, "$1").trim();
+}
+
 /**
  * Produces direct no-score interview analysis from the script and full transcript.
  */
@@ -63,7 +83,13 @@ export async function POST(request: Request) {
     }
 
     const jsonText = extractJsonObject(outputText);
-    const analysis = analysisOutputSchema.parse(parseJson<unknown>(jsonText));
+    const parsedAnalysis = analysisOutputSchema.parse(parseJson<unknown>(jsonText));
+    const analysis = {
+      impression_short: normalizeAnalysisText(parsedAnalysis.impression_short),
+      impression_long: normalizeAnalysisText(parsedAnalysis.impression_long),
+      red_flags: parsedAnalysis.red_flags.map((flag) => normalizeAnalysisText(flag)),
+      top_improvement: normalizeAnalysisText(parsedAnalysis.top_improvement),
+    };
 
     logger.info("Interview analysis generated successfully.", {
       responseId: response.id,
