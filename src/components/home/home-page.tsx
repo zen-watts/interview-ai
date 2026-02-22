@@ -36,7 +36,7 @@ export function HomePage() {
     return (
       <Link href={`/roles/${role.id}`}>
         <Card className={cn(
-          "relative h-full space-y-4 transition hover:border-paper-accent",
+          "relative h-full space-y-4 transition-all duration-200 hover:-translate-y-1 hover:border-paper-accent hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]",
           role.id === newlyCreatedRoleId && "card-glow-border"
         )}>
           <button
@@ -133,7 +133,7 @@ export function HomePage() {
                 className="text-left"
                 onClick={() => setIsCreateOpen(true)}
               >
-                <Card className="flex h-full flex-col items-center justify-center gap-3 transition hover:border-paper-accent">
+                <Card className="flex h-full flex-col items-center justify-center gap-3 transition-all duration-200 hover:-translate-y-1 hover:border-paper-accent hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
                   <span className="text-4xl leading-none text-paper-muted">+</span>
                   <span className="font-sans text-sm text-paper-muted">Create role</span>
                 </Card>

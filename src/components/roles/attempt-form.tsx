@@ -5,16 +5,17 @@ import { FormEvent, useState } from "react";
 import { Button } from "@/src/components/ui/button";
 import { Label } from "@/src/components/ui/label";
 import { Notice } from "@/src/components/ui/notice";
-import { Select } from "@/src/components/ui/select";
 import { Slider } from "@/src/components/ui/slider";
 import { Textarea } from "@/src/components/ui/textarea";
-import { INTERVIEW_CATEGORY_OPTIONS, type InterviewConfig } from "@/src/lib/types";
+import { cn } from "@/src/lib/utils/cn";
+import { INTERVIEW_CATEGORY_OPTIONS, type InterviewCategory, type InterviewConfig } from "@/src/lib/types";
 
 export const defaultInterviewConfig: InterviewConfig = {
-  personaIntensity: 25,
+  temperament: 25,
+  questionDifficulty: 25,
   followUpIntensity: 45,
   primaryQuestionCount: 5,
-  category: "Strictly Behavioral",
+  categories: ["Strictly Behavioral"],
   notes: "",
 };
 
@@ -39,25 +40,43 @@ export function AttemptForm({
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="space-y-2">
-        <Label htmlFor="persona-intensity">Friendly Recruiter to Stress Tester</Label>
+        <Label htmlFor="temperament" hint="Controls the interviewer's tone and demeanor, from warm and supportive to high-pressure and intense.">Temperament</Label>
         <Slider
-          id="persona-intensity"
+          id="temperament"
           min={0}
           max={100}
           step={1}
-          value={config.personaIntensity}
+          value={config.temperament}
           onChange={(event) =>
             setConfig((current) => ({
               ...current,
-              personaIntensity: Number(event.target.value),
+              temperament: Number(event.target.value),
             }))
           }
-          labels={{ min: "Friendly", max: "Stress Tester" }}
+          labels={{ min: "Calm", max: "Intense" }}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="follow-up-intensity">Follow-up Frequency</Label>
+        <Label htmlFor="question-difficulty" hint="Sets the complexity of questions, from entry-level fundamentals to expert scenarios requiring deep expertise.">Question Difficulty</Label>
+        <Slider
+          id="question-difficulty"
+          min={0}
+          max={100}
+          step={1}
+          value={config.questionDifficulty}
+          onChange={(event) =>
+            setConfig((current) => ({
+              ...current,
+              questionDifficulty: Number(event.target.value),
+            }))
+          }
+          labels={{ min: "Beginner", max: "Expert" }}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="follow-up-intensity" hint="How often the interviewer digs deeper into your answers with follow-up questions.">Follow-up Frequency</Label>
         <Slider
           id="follow-up-intensity"
           min={0}
@@ -75,7 +94,7 @@ export function AttemptForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="question-count">Length (primary questions)</Label>
+        <Label htmlFor="question-count" hint="The total number of main questions in the interview. More questions means a longer session.">Length (primary questions)</Label>
         <Slider
           id="question-count"
           min={1}
@@ -93,27 +112,38 @@ export function AttemptForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="category">Category</Label>
-        <Select
-          id="category"
-          value={config.category}
-          onChange={(event) =>
-            setConfig((current) => ({
-              ...current,
-              category: event.target.value as InterviewConfig["category"],
-            }))
-          }
-        >
-          {INTERVIEW_CATEGORY_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </Select>
+        <Label hint="Pick one or more question types. Select multiple to create a blended interview.">Categories</Label>
+        <div className="flex flex-wrap gap-2">
+          {INTERVIEW_CATEGORY_OPTIONS.map((option) => {
+            const isSelected = config.categories.includes(option);
+            return (
+              <button
+                key={option}
+                type="button"
+                className={cn(
+                  "rounded-paper border px-3 py-1.5 font-sans text-sm transition",
+                  isSelected
+                    ? "border-paper-accent bg-paper-accent/10 text-paper-ink"
+                    : "border-paper-border text-paper-muted hover:border-paper-accent",
+                )}
+                onClick={() =>
+                  setConfig((current) => {
+                    const next = isSelected
+                      ? current.categories.filter((c) => c !== option)
+                      : [...current.categories, option];
+                    return { ...current, categories: next.length > 0 ? next : current.categories };
+                  })
+                }
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="notes">Anything else to know or do in this interview?</Label>
+        <Label htmlFor="notes" hint="Optional free-text instructions for the interviewer — focus areas, scenarios to include, or anything else.">Anything else to know or do in this interview?</Label>
         <Textarea
           id="notes"
           value={config.notes}
