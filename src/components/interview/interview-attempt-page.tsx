@@ -788,7 +788,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
             className="interview-complete-text text-5xl tracking-tight text-slate-100 md:text-6xl"
             style={{ animationDuration: `${COMPLETE_SCENE_MS}ms` }}
           >
-            Interview Complete
+            Analyzing Interview
           </h1>
         </section>
       </main>
