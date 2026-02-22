@@ -21,16 +21,14 @@ const statusCopy: Record<string, string> = {
   error: "Needs attention",
 };
 
-/**
- * Post-interview page that contains analysis, transcript review, and stored script.
- */
 export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string; attemptId: string }) {
-  const { store, setAttemptStatus, setAttemptAnalysis } = useAppStore();
+  const { store, setAttemptStatus, setAttemptAnalysis, patchDevSettings } = useAppStore();
   const router = useRouter();
 
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [showScript, setShowScript] = useState(store.devSettings.showInterviewerScriptOnConclusion);
 
   const role = useMemo(() => store.roles.find((item) => item.id === roleId) ?? null, [roleId, store.roles]);
   const attempt = useMemo(
@@ -47,6 +45,10 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
       router.replace(`/roles/${role.id}/attempts/${attempt.id}`);
     }
   }, [attempt, role, router]);
+
+  useEffect(() => {
+    setShowScript(store.devSettings.showInterviewerScriptOnConclusion);
+  }, [store.devSettings.showInterviewerScriptOnConclusion]);
 
   if (!role || !attempt) {
     return (
@@ -76,17 +78,26 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
     setAttemptStatus(attempt.id, "analysis_pending");
 
     try {
+      logger.info("analysis.request.started", {
+        attemptId: attempt.id,
+        transcriptLength: transcript.length,
+      });
+
       const analysis = await requestInterviewAnalysis({
         script: attempt.script,
         transcript,
       });
 
       setAttemptAnalysis(attempt.id, analysis);
+      logger.info("analysis.request.completed", {
+        attemptId: attempt.id,
+        redFlagCount: analysis.red_flags.length,
+      });
     } catch (analysisError) {
       const message = analysisError instanceof Error ? analysisError.message : "Analysis failed.";
       setAttemptStatus(attempt.id, "analysis_pending", message);
       setError(message);
-      logger.error("Interview analysis failed.", { message, attemptId: attempt.id });
+      logger.error("analysis.request.failed", { message, attemptId: attempt.id });
     } finally {
       setLoadingAnalysis(false);
     }
@@ -96,6 +107,8 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
     attempt.status === "analysis_pending" || loadingAnalysis
       ? "Analysis in progress..."
       : "Analysis will appear here once generation completes.";
+  const isDevMode = process.env.NODE_ENV !== "production";
+  const canShowScriptToggle = isDevMode && Boolean(attempt.script);
 
   return (
     <main className="space-y-6 pb-12">
@@ -140,7 +153,9 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
           </Card>
 
           <Card className="space-y-2">
-            <h2 className="font-sans text-sm font-semibold uppercase tracking-[0.08em] text-paper-ink">Detailed impression</h2>
+            <h2 className="font-sans text-sm font-semibold uppercase tracking-[0.08em] text-paper-ink">
+              Detailed impression
+            </h2>
             <p className="leading-relaxed text-paper-softInk">
               {attempt.analysis?.impression_long || analysisFallbackMessage}
             </p>
@@ -204,16 +219,40 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
             </p>
           </Card>
 
-          {store.devSettings.showInterviewerScriptOnConclusion && attempt.script ? (
+          {canShowScriptToggle ? (
             <Card className="space-y-3">
-              <h2 className="text-2xl font-semibold text-paper-ink">Interviewer script</h2>
-              <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-paper border border-paper-border bg-paper-elevated p-4 text-sm leading-relaxed text-paper-softInk">
-                {attempt.script}
-              </pre>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-2xl font-semibold text-paper-ink">Interviewer script</h2>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    const next = !showScript;
+                    setShowScript(next);
+                    patchDevSettings({ showInterviewerScriptOnConclusion: next });
+                  }}
+                >
+                  {showScript ? "Hide" : "Show"}
+                </Button>
+              </div>
+
+              {showScript && attempt.script ? (
+                <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-paper border border-paper-border bg-paper-elevated p-4 text-sm leading-relaxed text-paper-softInk">
+                  {attempt.script}
+                </pre>
+              ) : (
+                <p className="text-paper-softInk">Hidden. Enable to inspect the generated interviewer script.</p>
+              )}
             </Card>
           ) : null}
         </div>
       </section>
+
+      <div className="pt-2">
+        <Link href={`/roles/${role.id}`}>
+          <Button>Return</Button>
+        </Link>
+      </div>
     </main>
   );
 }

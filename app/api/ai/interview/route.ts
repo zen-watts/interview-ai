@@ -7,6 +7,7 @@ import { createLogger } from "@/src/lib/logger";
 import { END_TOKEN } from "@/src/lib/types";
 
 const logger = createLogger("api.interview");
+const MAX_INTERVIEW_MESSAGE_CHARS = 220;
 
 const bodySchema = z.object({
   script: z.string().min(1),
@@ -27,6 +28,39 @@ function hasEndToken(message: string) {
     .split("\n")
     .map((line) => line.trim())
     .includes(END_TOKEN);
+}
+
+function sanitizePlainText(text: string) {
+  return text
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/(^|\n)\s*(STAR|SITUATION|TASK|ACTION|RESULT)\s*:\s*/gi, "$1")
+    .replace(/\s*\n+\s*/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function trimInterviewerMessage(text: string, maxChars: number) {
+  if (text.length <= maxChars) {
+    return text;
+  }
+
+  const clipped = text.slice(0, maxChars + 1);
+  const sentenceEnd = Math.max(clipped.lastIndexOf("?"), clipped.lastIndexOf("."), clipped.lastIndexOf("!"));
+  if (sentenceEnd >= Math.floor(maxChars * 0.55)) {
+    return clipped.slice(0, sentenceEnd + 1).trim();
+  }
+
+  const lastSpace = clipped.lastIndexOf(" ");
+  const base = clipped.slice(0, lastSpace > 0 ? lastSpace : maxChars).trim();
+  return `${base}...`;
 }
 
 /**
@@ -76,15 +110,23 @@ export async function POST(request: Request) {
     }
 
     const isEnd = message === END_TOKEN || hasEndToken(message);
+    const sanitizedMessage = isEnd
+      ? END_TOKEN
+      : trimInterviewerMessage(sanitizePlainText(message), MAX_INTERVIEW_MESSAGE_CHARS);
+
+    if (!sanitizedMessage) {
+      logger.error("Interview turn normalization produced an empty response.", { responseId: response.id });
+      return NextResponse.json({ error: "Model returned an invalid interviewer turn" }, { status: 502 });
+    }
 
     logger.info("Interview turn generated successfully.", {
       responseId: response.id,
       isEnd,
-      messageLength: message.length,
+      messageLength: sanitizedMessage.length,
     });
 
     return NextResponse.json({
-      message: isEnd ? END_TOKEN : message,
+      message: sanitizedMessage,
       isEnd,
     });
   } catch (error) {
