@@ -64,7 +64,8 @@ export interface RoleProfile {
 }
 
 export interface InterviewConfig {
-  personaIntensity: number;
+  temperament: number;
+  questionDifficulty: number;
   followUpIntensity: number;
   primaryQuestionCount: number;
   category: InterviewCategory;
