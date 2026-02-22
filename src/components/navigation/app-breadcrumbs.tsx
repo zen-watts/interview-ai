@@ -19,7 +19,7 @@ export function AppBreadcrumbs() {
   const { hydrated, store } = useAppStore();
 
   const crumbs = useMemo<Crumb[]>(() => {
-    const base: Crumb[] = [{ href: "/", label: "Home" }];
+    const base: Crumb[] = [{ href: "/", label: "Role Dashboard" }];
 
     if (pathname === "/") {
       return base;
@@ -71,17 +71,20 @@ export function AppBreadcrumbs() {
   }
 
   return (
-    <nav aria-label="Breadcrumb" className="mb-5 flex items-center gap-1 font-sans text-sm text-paper-softInk">
+    <nav
+      aria-label="Breadcrumb"
+      className="mb-4 flex items-center gap-1 font-sans text-xs text-paper-muted opacity-80"
+    >
       {crumbs.map((crumb, index) => {
         const isCurrent = index === crumbs.length - 1;
 
         return (
           <div key={crumb.href} className="flex items-center gap-1">
-            {index > 0 ? <span className="text-paper-muted">/</span> : null}
+            {index > 0 ? <span>/</span> : null}
             {isCurrent ? (
-              <span className="text-paper-ink">{crumb.label}</span>
+              <span className="text-paper-softInk">{crumb.label}</span>
             ) : (
-              <Link href={crumb.href} className="text-paper-softInk hover:text-paper-ink hover:underline">
+              <Link href={crumb.href} className="hover:text-paper-softInk">
                 {crumb.label}
               </Link>
             )}
