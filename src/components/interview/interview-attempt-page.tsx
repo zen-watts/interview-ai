@@ -19,9 +19,11 @@ import { formatDuration, nowIso } from "@/src/lib/utils/time";
 
 const logger = createLogger("interview-attempt-page");
 
-const QUESTION_FADE_MS = 280;
+const QUESTION_FADE_MS = 420;
 const COMPLETE_DELAY_MS = 3000;
 const TYPING_INTERVAL_MS = 38;
+const RESPONSE_SEND_ANIMATION_MS = 2200;
+const EMPTY_RESPONSE_ERROR = "Please respond before finishing this turn.";
 
 type InterviewVisualPhase = "intro" | "transition" | "active" | "complete";
 
@@ -71,7 +73,6 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
   const { store, replaceTranscript, appendTranscriptTurn, setAttemptStatus, setAttemptAnalysis } = useAppStore();
   const router = useRouter();
 
-  const [spokenDraft, setSpokenDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loadingTurn, setLoadingTurn] = useState(false);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
@@ -84,6 +85,10 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
   const [questionElapsedSec, setQuestionElapsedSec] = useState(0);
   const [questionCycle, setQuestionCycle] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [responseSendText, setResponseSendText] = useState("");
+  const [responseSendActive, setResponseSendActive] = useState(false);
+  const [responseSendKey, setResponseSendKey] = useState(0);
+  const [errorFading, setErrorFading] = useState(false);
 
   const spokenAnswerRef = useRef("");
   const initializedRef = useRef(false);
@@ -100,7 +105,6 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
   const onFinalTranscript = useCallback((text: string) => {
     const next = [spokenAnswerRef.current, text].filter(Boolean).join(" ").trim();
     spokenAnswerRef.current = next;
-    setSpokenDraft(next);
   }, []);
 
   const speech = useSpeechRecognition(onFinalTranscript);
@@ -117,7 +121,6 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
   const resetAnswerDraft = useCallback(() => {
     spokenAnswerRef.current = "";
-    setSpokenDraft("");
     resetSpeech();
   }, [resetSpeech]);
 
@@ -133,6 +136,27 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
       document.body.classList.remove("interview-dark-mode");
     };
   }, [phase]);
+
+  useEffect(() => {
+    if (error !== EMPTY_RESPONSE_ERROR) {
+      setErrorFading(false);
+      return;
+    }
+
+    const fadeTimer = window.setTimeout(() => {
+      setErrorFading(true);
+    }, 1000);
+
+    const clearTimer = window.setTimeout(() => {
+      setError(null);
+      setErrorFading(false);
+    }, 1320);
+
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [error]);
 
   useEffect(() => {
     return () => {
@@ -206,6 +230,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
       !foregroundVisible ||
       loadingTurn ||
       loadingAnalysis ||
+      responseSendActive ||
       !speechSupported ||
       speechError ||
       speechListening
@@ -231,6 +256,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     visibleQuestionText,
     typingInProgress,
     foregroundVisible,
+    responseSendActive,
     speechError,
     speechListening,
     speechSupported,
@@ -269,7 +295,6 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
   const organizationName = normalizeOrganizationName(role.organizationDescription);
   const voiceUnavailable = !speechSupported || Boolean(speechError);
-  const liveTranscript = [spokenDraft.trim(), interimText.trim()].filter(Boolean).join(" ").trim();
 
   const typeQuestion = useCallback(async (question: string) => {
     if (typingTimerRef.current) {
@@ -471,7 +496,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     async (answer: string, answerDurationSec?: number) => {
       const combinedAnswer = answer.trim();
       if (!combinedAnswer) {
-        setError("Please respond before finishing this turn.");
+        setError(EMPTY_RESPONSE_ERROR);
         return;
       }
 
@@ -515,15 +540,37 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
   };
 
   const finishResponse = async () => {
-    if (phase !== "active" || !foregroundVisible || voiceUnavailable || typingInProgress || loadingTurn || loadingAnalysis) {
+    if (
+      phase !== "active" ||
+      !foregroundVisible ||
+      voiceUnavailable ||
+      typingInProgress ||
+      loadingTurn ||
+      loadingAnalysis ||
+      responseSendActive
+    ) {
       return;
     }
 
+    setResponseSendActive(true);
     const interimSnapshot = interimText.trim();
     const durationSeconds = speechListening ? stopSpeech() : 0;
     const combinedAnswer = [spokenAnswerRef.current.trim(), interimSnapshot].filter(Boolean).join(" ").trim();
+    if (!combinedAnswer) {
+      setResponseSendActive(false);
+      setError(EMPTY_RESPONSE_ERROR);
+      return;
+    }
 
-    await submitAnswer(combinedAnswer, durationSeconds);
+    setResponseSendText(combinedAnswer);
+    setResponseSendKey((current) => current + 1);
+    await delay(RESPONSE_SEND_ANIMATION_MS);
+    setResponseSendText("");
+    try {
+      await submitAnswer(combinedAnswer, durationSeconds);
+    } finally {
+      setResponseSendActive(false);
+    }
   };
 
   const retryVoiceCapture = () => {
@@ -680,63 +727,80 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
       <section className="relative z-10 flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center px-6 pb-14 pt-2 md:px-10">
         <div
-          className={`interview-question-text text-center transition-all duration-300 ${
-            questionVisible ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0"
-          }`}
+          className={`pointer-events-none absolute left-1/2 top-12 w-full max-w-[min(92vw,72rem)] -translate-x-1/2 px-6 md:top-16 ${
+            questionVisible ? "opacity-100 duration-[2500ms]" : "opacity-0 duration-300"
+          } transition-opacity ease-in-out`}
         >
-          {visibleQuestionText}
+          <div className="interview-question-text min-h-[3.6em] text-center">{visibleQuestionText}</div>
         </div>
 
         {foregroundVisible ? (
-          <div className="interview-support-enter flex w-full flex-col items-center">
+          <div className="interview-support-enter relative flex w-full flex-col items-center">
             <AudioReactiveBlob className="mt-12" level={audioLevel} listening={speechListening} />
 
-            <div className="mt-6 w-full max-w-2xl rounded-paper border border-slate-500/35 bg-slate-900/40 px-4 py-3 text-slate-100/75 backdrop-blur-sm">
-              <p className="font-sans text-[11px] uppercase tracking-[0.12em] text-slate-300/70">Live Transcription</p>
-              <p className="mt-2 min-h-10 text-sm leading-relaxed">
-                {liveTranscript || (speechListening ? "Listening..." : "Waiting for speech...")}
-              </p>
-            </div>
-
             <Button
-              className="mt-7 min-w-48 border-slate-500/45 bg-slate-900/45 text-slate-100 backdrop-blur-sm hover:border-slate-300/70 hover:bg-slate-800/55"
+              className="mt-7 min-w-48 border-slate-500/45 bg-slate-900/45 text-slate-100 opacity-50 backdrop-blur-sm hover:border-slate-300/70 hover:bg-slate-800/55"
               onClick={finishResponse}
-              disabled={voiceUnavailable || typingInProgress || loadingTurn || loadingAnalysis}
+              disabled={voiceUnavailable || typingInProgress || loadingTurn || loadingAnalysis || responseSendActive}
             >
-              {typingInProgress ? "Question typing..." : loadingTurn ? "Loading next question..." : "Finish Response"}
+              {typingInProgress
+                ? "Question typing..."
+                : loadingTurn
+                  ? "Loading next question..."
+                  : responseSendActive
+                    ? "Sending..."
+                    : "Finish Response"}
             </Button>
 
-            {voiceUnavailable ? (
-              <div className="mt-6 w-full max-w-2xl space-y-3">
-                <Notice
-                  className="w-full border-slate-500 text-slate-100"
-                  tone="error"
-                  message={
-                    speechSupported
-                      ? speechError || "Microphone permission is required for voice mode."
-                      : "Voice mode requires browser speech recognition support."
-                  }
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="border-slate-500/45 bg-slate-900/30 text-slate-100 hover:border-slate-300"
-                  onClick={retryVoiceCapture}
-                  disabled={typingInProgress || loadingTurn || loadingAnalysis}
-                >
-                  Retry microphone access
-                </Button>
+            {voiceUnavailable || error || attempt.lastError ? (
+              <div className="pointer-events-none absolute top-[calc(100%+1.5rem)] w-full max-w-2xl px-2">
+                <div className="pointer-events-auto space-y-3">
+                  {voiceUnavailable ? (
+                    <div className="space-y-3">
+                      <Notice
+                        className="w-full border-slate-500 text-slate-100"
+                        tone="error"
+                        message={
+                          speechSupported
+                            ? speechError || "Microphone permission is required for voice mode."
+                            : "Voice mode requires browser speech recognition support."
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="border-slate-500/45 bg-slate-900/30 text-slate-100 hover:border-slate-300"
+                        onClick={retryVoiceCapture}
+                        disabled={typingInProgress || loadingTurn || loadingAnalysis}
+                      >
+                        Retry microphone access
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {error ? (
+                    <div className={`transition-opacity duration-300 ${errorFading ? "opacity-0" : "opacity-100"}`}>
+                      <Notice className="w-full border-slate-500 text-slate-100" tone="error" message={error} />
+                    </div>
+                  ) : null}
+
+                  {attempt.lastError && !error ? (
+                    <Notice className="w-full border-slate-500 text-slate-100" tone="error" message={attempt.lastError} />
+                  ) : null}
+                </div>
               </div>
             ) : null}
+          </div>
+        ) : null}
 
-            {error ? <Notice className="mt-6 w-full max-w-2xl border-slate-500 text-slate-100" tone="error" message={error} /> : null}
-            {attempt.lastError && !error ? (
-              <Notice
-                className="mt-6 w-full max-w-2xl border-slate-500 text-slate-100"
-                tone="error"
-                message={attempt.lastError}
-              />
-            ) : null}
+        {responseSendText ? (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-start justify-center px-6">
+            <div
+              key={responseSendKey}
+              className="interview-response-send mt-[48vh] w-full max-w-2xl rounded-paper border border-slate-400/45 bg-slate-900/65 px-5 py-4 text-sm leading-relaxed text-slate-100/88 shadow-[0_8px_28px_rgba(0,0,0,0.36)] backdrop-blur-sm"
+            >
+              {responseSendText}
+            </div>
           </div>
         ) : null}
 
