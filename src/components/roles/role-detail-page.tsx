@@ -93,7 +93,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
       </header>
 
       <section className="space-y-3">
-        <h2 className="text-2xl">Times practiced</h2>
+        <h2 className="text-2xl">Interview Sessions</h2>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <button
@@ -188,6 +188,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
               setAttemptLoading(true);
 
               const attempt = createAttempt(role.id, config);
+              setAttemptOpen(false);
 
               try {
                 const script = await requestInterviewScript({
@@ -196,14 +197,12 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
                   config,
                 });
                 setAttemptScript(attempt.id, script);
-                setAttemptOpen(false);
               } catch (error) {
                 const message = error instanceof Error ? error.message : "Failed to generate script.";
                 setAttemptStatus(attempt.id, "error", message);
                 patchAttempt(attempt.id, {
                   script: null,
                 });
-                setAttemptError(message);
               } finally {
                 setAttemptLoading(false);
               }

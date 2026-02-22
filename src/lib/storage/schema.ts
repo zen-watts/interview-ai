@@ -51,7 +51,9 @@ const roleSchema = z.object({
 });
 
 const configSchema = z.object({
-  personaIntensity: z.number().min(0).max(100),
+  temperament: z.number().min(0).max(100).default(25),
+  questionDifficulty: z.number().min(0).max(100).default(25),
+  personaIntensity: z.number().min(0).max(100).optional(),
   followUpIntensity: z.number().min(0).max(100),
   primaryQuestionCount: z.number().min(1).max(10),
   category: z.enum(interviewCategoryValues),

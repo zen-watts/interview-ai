@@ -42,7 +42,7 @@ export const SCRIPT_GENERATION_CATEGORY_GUIDANCE: Record<InterviewConfig["catego
     "Be playful and surprising while staying professional, relevant, and psychologically realistic.",
 };
 
-export function getScriptPersonaGuidance(intensity: number) {
+export function getScriptTemperamentGuidance(intensity: number) {
   if (intensity <= 20) {
     return "Warm, encouraging, and collaborative.";
   }
@@ -56,6 +56,22 @@ export function getScriptPersonaGuidance(intensity: number) {
   }
 
   return "High-pressure stress test with controlled intensity and realistic tension.";
+}
+
+export function getScriptDifficultyGuidance(difficulty: number) {
+  if (difficulty <= 20) {
+    return "Entry-level questions suitable for early-career candidates. Focus on fundamentals and basic scenarios.";
+  }
+
+  if (difficulty <= 45) {
+    return "Moderate questions expecting some professional experience. Include situational depth and trade-off awareness.";
+  }
+
+  if (difficulty <= 70) {
+    return "Advanced questions requiring demonstrated expertise. Probe architectural decisions, leadership, and complex problem-solving.";
+  }
+
+  return "Expert-level questions for senior/staff candidates. Expect systems thinking, organizational impact, and nuanced judgment.";
 }
 
 export function getScriptFollowUpGuidance(intensity: number) {
