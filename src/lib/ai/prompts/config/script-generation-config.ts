@@ -32,10 +32,9 @@ export const SCRIPT_GENERATION_OUTPUT_REQUIREMENTS = [
   "9) The interviewer must end with {{END_TOKEN}} on its own line when all primary questions are finished.",
 ] as const;
 
-export const SCRIPT_GENERATION_CATEGORY_GUIDANCE: Record<InterviewConfig["category"], string> = {
+export const SCRIPT_GENERATION_CATEGORY_GUIDANCE: Record<string, string> = {
   "Strictly Behavioral":
     "Focus on behavioral and situational prompts. Probe for specific examples and outcomes.",
-  Mix: "Blend behavioral questions with light technical-concept discussion tied to real work decisions.",
   "Technical Concepts":
     "Ask conceptual technical questions in plain language tied to tradeoffs and communication, not quiz-style trivia.",
   Unhinged:

@@ -43,7 +43,7 @@ const bodySchema = z.object({
     questionDifficulty: z.number().min(0).max(100),
     followUpIntensity: z.number().min(0).max(100),
     primaryQuestionCount: z.number().min(1).max(10),
-    category: z.enum(["Strictly Behavioral", "Mix", "Technical Concepts", "Unhinged"]),
+    categories: z.array(z.enum(["Strictly Behavioral", "Technical Concepts", "Unhinged"])).min(1),
     notes: z.string(),
   }),
 });
