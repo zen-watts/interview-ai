@@ -11,9 +11,9 @@ import { Textarea } from "@/src/components/ui/textarea";
 import { INTERVIEW_CATEGORY_OPTIONS, type InterviewConfig } from "@/src/lib/types";
 
 export const defaultInterviewConfig: InterviewConfig = {
-  personaIntensity: 25,
-  followUpIntensity: 45,
-  primaryQuestionCount: 5,
+  personaIntensity: 3,
+  followUpIntensity: 4,
+  primaryQuestionCount: 4,
   category: "Strictly Behavioral",
   notes: "",
 };
@@ -39,11 +39,11 @@ export function AttemptForm({
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="space-y-2">
-        <Label htmlFor="persona-intensity">Friendly Recruiter to Stress Tester</Label>
+        <Label htmlFor="persona-intensity">Interviewer Tone</Label>
         <Slider
           id="persona-intensity"
-          min={0}
-          max={100}
+          min={1}
+          max={10}
           step={1}
           value={config.personaIntensity}
           onChange={(event) =>
@@ -52,7 +52,7 @@ export function AttemptForm({
               personaIntensity: Number(event.target.value),
             }))
           }
-          labels={{ min: "Friendly", max: "Stress Tester" }}
+          labels={{ min: "Friendly", max: "Dry" }}
         />
       </div>
 
@@ -60,8 +60,8 @@ export function AttemptForm({
         <Label htmlFor="follow-up-intensity">Follow-up Frequency</Label>
         <Slider
           id="follow-up-intensity"
-          min={0}
-          max={100}
+          min={1}
+          max={10}
           step={1}
           value={config.followUpIntensity}
           onChange={(event) =>
@@ -70,7 +70,7 @@ export function AttemptForm({
               followUpIntensity: Number(event.target.value),
             }))
           }
-          labels={{ min: "Never", max: "Multiple per question" }}
+          labels={{ min: "Never", max: "Up to 2 follow-ups" }}
         />
       </div>
 
@@ -79,7 +79,7 @@ export function AttemptForm({
         <Slider
           id="question-count"
           min={1}
-          max={10}
+          max={6}
           step={1}
           value={config.primaryQuestionCount}
           onChange={(event) =>
@@ -88,7 +88,7 @@ export function AttemptForm({
               primaryQuestionCount: Number(event.target.value),
             }))
           }
-          labels={{ min: "1", max: "10" }}
+          labels={{ min: "1", max: "6" }}
         />
       </div>
 

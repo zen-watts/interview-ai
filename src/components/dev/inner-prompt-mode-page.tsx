@@ -26,9 +26,9 @@ import { nowIso } from "@/src/lib/utils/time";
 const logger = createLogger("inner-prompt-mode");
 
 const defaultConfig: InterviewConfig = {
-  personaIntensity: 25,
-  followUpIntensity: 45,
-  primaryQuestionCount: 5,
+  personaIntensity: 3,
+  followUpIntensity: 4,
+  primaryQuestionCount: 4,
   category: "Strictly Behavioral",
   notes: "",
 };
@@ -342,8 +342,8 @@ export function InnerPromptModePage() {
               <Input
                 id="inner-persona"
                 type="number"
-                min={0}
-                max={100}
+                min={1}
+                max={10}
                 value={config.personaIntensity}
                 onChange={(event) =>
                   setConfig((current) => ({
@@ -358,8 +358,8 @@ export function InnerPromptModePage() {
               <Input
                 id="inner-followups"
                 type="number"
-                min={0}
-                max={100}
+                min={1}
+                max={10}
                 value={config.followUpIntensity}
                 onChange={(event) =>
                   setConfig((current) => ({
@@ -375,7 +375,7 @@ export function InnerPromptModePage() {
                 id="inner-count"
                 type="number"
                 min={1}
-                max={10}
+                max={6}
                 value={config.primaryQuestionCount}
                 onChange={(event) =>
                   setConfig((current) => ({

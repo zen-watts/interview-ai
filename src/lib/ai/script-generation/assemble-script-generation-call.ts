@@ -38,16 +38,34 @@ const categoryGuidance: Record<InterviewConfig["category"], string> = {
     "Prioritize fun and absurdity while still loosely tied to the role. This mode does not need to optimize for realistic prep value.",
 };
 
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizeDial(value: number) {
+  if (value <= 0) {
+    return 1;
+  }
+
+  if (value <= 10) {
+    return Math.round(value);
+  }
+
+  return clamp(Math.round(value / 10), 1, 10);
+}
+
 function getPersonaGuidance(intensity: number) {
-  if (intensity <= 20) {
+  const dial = normalizeDial(intensity);
+
+  if (dial <= 3) {
     return "Very friendly and warm tone.";
   }
 
-  if (intensity <= 45) {
+  if (dial <= 6) {
     return "Professional and neutral tone.";
   }
 
-  if (intensity <= 70) {
+  if (dial <= 8) {
     return "Dry and direct tone.";
   }
 
@@ -55,11 +73,13 @@ function getPersonaGuidance(intensity: number) {
 }
 
 function getFollowUpGuidance(intensity: number) {
-  if (intensity <= 20) {
+  const dial = normalizeDial(intensity);
+
+  if (dial <= 2) {
     return "Never ask follow-up questions unless a hard clarification is absolutely needed.";
   }
 
-  if (intensity <= 45) {
+  if (dial <= 6) {
     return "Occasionally ask one follow-up when it clearly helps.";
   }
 
@@ -67,11 +87,13 @@ function getFollowUpGuidance(intensity: number) {
 }
 
 function getFollowUpCap(intensity: number) {
-  if (intensity <= 20) {
+  const dial = normalizeDial(intensity);
+
+  if (dial <= 2) {
     return 0;
   }
 
-  if (intensity <= 65) {
+  if (dial <= 6) {
     return 1;
   }
 
@@ -106,13 +128,16 @@ function buildRoleContext(role: ScriptGenerationRoleInput) {
 }
 
 function buildInterviewConfigContext(config: InterviewConfig) {
+  const personaDial = normalizeDial(config.personaIntensity);
+  const followUpDial = normalizeDial(config.followUpIntensity);
+
   return [
-    `- Persona intensity dial (0 friendly, 100 not friendly): ${config.personaIntensity}`,
+    `- Persona intensity dial (1 friendly, 10 not friendly): ${personaDial}`,
     `- Persona rule: tone only, does not change question difficulty.`,
-    `- Persona guidance: ${getPersonaGuidance(config.personaIntensity)}`,
-    `- Follow-up intensity dial (0 never, 100 frequent): ${config.followUpIntensity}`,
-    `- Follow-up guidance: ${getFollowUpGuidance(config.followUpIntensity)}`,
-    `- Maximum follow-ups per primary question: ${getFollowUpCap(config.followUpIntensity)} (hard cap)`,
+    `- Persona guidance: ${getPersonaGuidance(personaDial)}`,
+    `- Follow-up intensity dial (1 never, 10 frequent): ${followUpDial}`,
+    `- Follow-up guidance: ${getFollowUpGuidance(followUpDial)}`,
+    `- Maximum follow-ups per primary question: ${getFollowUpCap(followUpDial)} (hard cap)`,
     `- Primary question count dial: ${config.primaryQuestionCount}`,
     `- Length rule: this count defines interview length and must be pre-planned.`,
     `- Category: ${config.category}`,
