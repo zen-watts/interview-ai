@@ -121,6 +121,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [phase, setPhase] = useState<InterviewVisualPhase>("intro");
   const [responseText, setResponseText] = useState("");
+  const [visibleResponseText, setVisibleResponseText] = useState("");
   const [questionText, setQuestionText] = useState("");
   const [visibleQuestionText, setVisibleQuestionText] = useState("");
   const [questionVisible, setQuestionVisible] = useState(false);
@@ -318,6 +319,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
     if (latestStoredQuestion) {
       setResponseText(latestStoredResponse);
+      setVisibleResponseText(latestStoredResponse);
       setQuestionText(latestStoredQuestion);
       setVisibleQuestionText(latestStoredQuestion);
       setTypingInProgress(false);
@@ -444,7 +446,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     );
   }
 
-  const organizationName = normalizeOrganizationName(role.organizationDescription);
+  const organizationName = normalizeOrganizationName(role.organizationName);
   const voiceUnavailable = !speechSupported || Boolean(speechError);
   const questionContentLength = questionText.trim().length || visibleQuestionText.trim().length;
   const questionSizeClass =
@@ -454,7 +456,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
         ? "interview-question-text-balanced"
         : "";
 
-  const typeQuestion = async (question: string) => {
+  const typeInterviewerLine = async (line: string, setVisibleText: (value: string) => void) => {
     if (typingTimerRef.current) {
       window.clearInterval(typingTimerRef.current);
       typingTimerRef.current = null;
@@ -462,13 +464,11 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
     const runId = typingRunRef.current + 1;
     typingRunRef.current = runId;
-    setVisibleQuestionText("");
-    setTypingInProgress(true);
-    const words = splitQuestionWords(question);
+    setVisibleText("");
+    const words = splitQuestionWords(line);
 
     if (words.length === 0) {
-      setVisibleQuestionText(question.trim());
-      setTypingInProgress(false);
+      setVisibleText(line.trim());
       return;
     }
 
@@ -486,7 +486,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
         }
 
         index = Math.min(words.length, index + 1);
-        setVisibleQuestionText(words.slice(0, index).join(" "));
+        setVisibleText(words.slice(0, index).join(" "));
 
         if (index >= words.length) {
           if (typingTimerRef.current) {
@@ -497,10 +497,6 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
         }
       }, TYPING_WORD_INTERVAL_MS);
     });
-
-    if (typingRunRef.current === runId) {
-      setTypingInProgress(false);
-    }
   };
 
   const runAnalysis = async (transcript: TranscriptTurn[]) => {
@@ -539,26 +535,40 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
   };
 
   const showNextQuestion = async (response: string, question: string) => {
+    const responseLine = response.trim();
+    const questionLine = question.trim();
+
     setForegroundVisible(false);
     setQuestionVisible(false);
     setPhase("transition");
 
     await delay(QUESTION_FADE_MS);
 
-    setResponseText(response.trim());
-    setQuestionText(question);
+    setResponseText(responseLine);
+    setVisibleResponseText("");
+    setQuestionText(questionLine);
     setVisibleQuestionText("");
     setQuestionElapsedSec(0);
     setQuestionCycle((current) => current + 1);
     setQuestionVisible(true);
     setPhase("active");
-    await Promise.all([typeQuestion(question), playInterviewerSpeech(question)]);
+
+    setTypingInProgress(true);
+    try {
+      if (responseLine) {
+        await Promise.all([typeInterviewerLine(responseLine, setVisibleResponseText), playInterviewerSpeech(responseLine)]);
+      }
+      await Promise.all([typeInterviewerLine(questionLine, setVisibleQuestionText), playInterviewerSpeech(questionLine)]);
+    } finally {
+      setTypingInProgress(false);
+    }
+
     setForegroundVisible(true);
 
     logger.info("interview.question.displayed", {
       attemptId: attempt.id,
-      responseLength: response.length,
-      questionLength: question.length,
+      responseLength: responseLine.length,
+      questionLength: questionLine.length,
     });
   };
 
@@ -582,6 +592,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     cancelInterviewerSpeech();
     resetAnswerDraft();
     setResponseText("");
+    setVisibleResponseText("");
     setQuestionText("");
     setVisibleQuestionText("");
     setTypingInProgress(false);
@@ -707,6 +718,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
     cancelInterviewerSpeech();
     setResponseText("");
+    setVisibleResponseText("");
     setAttemptStatus(attempt.id, "in_progress");
     setForegroundVisible(false);
     setQuestionVisible(false);
@@ -847,7 +859,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
             className="interview-complete-text text-5xl tracking-tight text-slate-100 md:text-6xl"
             style={{ animationDuration: `${COMPLETE_SCENE_MS}ms` }}
           >
-            Interview Complete
+            Analyzing Interview
           </h1>
         </section>
       </main>
@@ -963,19 +975,21 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
       <section className="relative z-10 flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center px-6 pb-14 pt-2 md:px-10">
         <div
-          className={`pointer-events-none absolute left-1/2 top-12 w-full max-w-[min(92vw,72rem)] -translate-x-1/2 px-6 md:top-16 ${
+          className={`pointer-events-none absolute left-1/2 top-8 w-full max-w-[min(92vw,72rem)] -translate-x-1/2 px-6 md:top-12 ${
             questionVisible ? "opacity-100 duration-[2500ms]" : "opacity-0 duration-300"
           } transition-opacity ease-in-out`}
         >
           {responseText ? (
-            <p className="mb-6 text-center text-lg leading-relaxed text-slate-200/88 md:text-xl">{responseText}</p>
+            <p className="mb-6 text-center text-[1.6875rem] leading-relaxed text-slate-200/88 md:text-[1.875rem]">
+              {visibleResponseText}
+            </p>
           ) : null}
           <div className={`interview-question-text min-h-[3.6em] text-center ${questionSizeClass}`}>{visibleQuestionText}</div>
         </div>
 
         {foregroundVisible ? (
           <div className="interview-support-enter relative flex w-full flex-col items-center">
-            <AudioReactiveBlob className="mt-20 md:mt-24" level={audioLevel} listening={speechListening} />
+            <AudioReactiveBlob className="mt-32 md:mt-36" level={audioLevel} listening={speechListening} />
 
             <Button
               className="mt-7 min-w-48 border-slate-500/45 bg-slate-900/45 text-slate-100 opacity-50 backdrop-blur-sm hover:border-slate-300/70 hover:bg-slate-800/55"

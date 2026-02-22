@@ -17,6 +17,7 @@ interface Crumb {
 export function AppBreadcrumbs() {
   const pathname = usePathname();
   const { hydrated, store } = useAppStore();
+  const isInterviewSessionRoute = /^\/roles\/[^/]+\/attempts\/[^/]+$/.test(pathname);
 
   const crumbs = useMemo<Crumb[]>(() => {
     const base: Crumb[] = [{ href: "/", label: "Role Dashboard" }];
@@ -68,9 +69,7 @@ export function AppBreadcrumbs() {
 
   const isAnalysisPage = pathname.endsWith("/conclusion");
 
-  const isInterviewActive = pathname.includes("/attempts/") && !pathname.endsWith("/conclusion");
-
-  if (!hydrated || !store.profile || isInterviewActive) {
+  if (!hydrated || !store.profile || isInterviewSessionRoute) {
     return null;
   }
 
@@ -87,9 +86,9 @@ export function AppBreadcrumbs() {
           return (
             <div key={crumb.href} className="flex items-center gap-1">
               {index > 0 ? <span>/</span> : null}
-            {isCurrent || (isAnalysisPage && crumb.label === "Interview session") ? (
-              <span className="text-paper-softInk">{crumb.label}</span>
-            ) : (
+              {isCurrent || (isAnalysisPage && crumb.label === "Interview session") ? (
+                <span className="text-paper-softInk">{crumb.label}</span>
+              ) : (
                 <Link href={crumb.href} className="hover:text-paper-softInk">
                   {crumb.label}
                 </Link>

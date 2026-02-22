@@ -88,16 +88,13 @@ export function HomePage() {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <h1 className="text-4xl leading-tight md:text-5xl">Role Dashboard</h1>
-          <p className="max-w-2xl text-paper-softInk">
-            Pick a role to practice, edit its context, or create a new one.
-          </p>
         </div>
 
         <Link
           href="/profile"
           className="self-start -mt-4 font-sans text-xs uppercase tracking-[0.16em] text-paper-softInk hover:text-paper-ink"
         >
-          Profile
+          Edit Profile
         </Link>
       </header>
 
