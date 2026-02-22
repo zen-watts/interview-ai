@@ -58,7 +58,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
   const attempts = useMemo(() => {
     return store.attempts
       .filter((item) => item.roleId === roleId)
-      .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1));
+      .sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1));
   }, [store.attempts, roleId]);
 
   if (!role) {
@@ -94,11 +94,11 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
       </header>
 
       <section className="space-y-3">
-        <h2 className="text-2xl">Interview attempts</h2>
+        <h2 className="text-2xl">Times practiced</h2>
 
         {attempts.length === 0 ? (
           <Card className="space-y-3">
-            <p className="text-paper-softInk">No interview attempts yet for this role.</p>
+            <p className="text-paper-softInk">No times practiced yet for this role.</p>
             <Button type="button" onClick={() => setAttemptOpen(true)}>
               Create interview
             </Button>
@@ -152,7 +152,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
                 variant="danger"
                 onClick={() => {
                   const confirmed = window.confirm(
-                    "Delete this role and all interview attempts tied to it?",
+                    "Delete this role and all practice sessions tied to it?",
                   );
                   if (!confirmed) {
                     return;

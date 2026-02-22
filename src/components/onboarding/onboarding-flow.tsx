@@ -179,7 +179,7 @@ export function OnboardingFlow() {
 
         {step === 0 ? (
           <div className="space-y-4">
-            <h1 className="text-4xl leading-tight md:text-5xl">Quiet Interview</h1>
+            <h1 className="text-4xl leading-tight md:text-5xl">Inner View</h1>
             <p className="max-w-2xl text-paper-softInk">
               Interview practice that feels realistic, focused, and calm.
             </p>

@@ -22,7 +22,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Quiet Interview",
+  title: "Inner View",
   description: "Psychologically intelligent AI interview practice",
 };
 
