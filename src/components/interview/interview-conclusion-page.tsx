@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { InterviewTimelineCard } from "@/src/components/interview/interview-timeline-card";
 import { useAppStore } from "@/src/components/providers/app-store-provider";
 import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
@@ -21,13 +22,40 @@ const statusCopy: Record<string, string> = {
   error: "Needs attention",
 };
 
+function sentenceList(value: string) {
+  return value
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(/(?<=[.!?])\s+/)
+    .filter(Boolean);
+}
+
+function summaryCopy(shortText: string, longText: string) {
+  const shortSentences = sentenceList(shortText);
+  const longSentences = sentenceList(longText);
+  const nextSentences = [...shortSentences];
+
+  if (nextSentences.length < 2 && longSentences.length > 0) {
+    const longFallback = longSentences[0];
+    if (!nextSentences.includes(longFallback)) {
+      nextSentences.push(longFallback);
+    }
+  }
+
+  return nextSentences.slice(0, 4).join(" ");
+}
+
 export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string; attemptId: string }) {
   const { store, setAttemptStatus, setAttemptAnalysis } = useAppStore();
   const router = useRouter();
 
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [impressionExpanded, setImpressionExpanded] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [focusedRange, setFocusedRange] = useState<{ start: number; end: number } | null>(null);
+  const impressionCardRef = useRef<HTMLDivElement | null>(null);
+  const transcriptTurnRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   const role = useMemo(() => store.roles.find((item) => item.id === roleId) ?? null, [roleId, store.roles]);
   const attempt = useMemo(
@@ -44,6 +72,17 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
       router.replace(`/roles/${role.id}/attempts/${attempt.id}`);
     }
   }, [attempt, role, router]);
+
+  useEffect(() => {
+    if (!showTranscript || !focusedRange) {
+      return;
+    }
+
+    const targetNode = transcriptTurnRefs.current[focusedRange.start];
+    if (targetNode) {
+      targetNode.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [focusedRange, showTranscript]);
 
   if (!role || !attempt) {
     return (
@@ -103,6 +142,16 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
       ? "Analysis in progress..."
       : "Analysis will appear here once generation completes.";
 
+  const shortImpression = attempt.analysis?.impression_short || "";
+  const detailedImpression = attempt.analysis?.impression_long || "";
+  const collapsedSummary = summaryCopy(shortImpression, detailedImpression);
+  const whatIsWorking =
+    sentenceList(shortImpression)[0] || (attempt.analysis ? "You established a usable baseline in this attempt." : analysisFallbackMessage);
+  const whatIsMissing = attempt.analysis
+    ? attempt.analysis.red_flags[0] || "No major red flags were detected, but more specificity can still strengthen delivery."
+    : analysisFallbackMessage;
+  const whatToDoNext = attempt.analysis?.top_improvement || analysisFallbackMessage;
+
   return (
     <main className="space-y-6 pb-12">
       <header className="flex flex-wrap items-start justify-between gap-4">
@@ -138,21 +187,70 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
 
       <section className="grid gap-4 md:grid-cols-6">
         <div className="space-y-4 md:col-span-4">
-          <Card className="space-y-2">
-            <h2 className="font-sans text-sm font-semibold uppercase tracking-[0.08em] text-paper-ink">Short impression</h2>
-            <p className="leading-relaxed text-paper-softInk">
-              {attempt.analysis?.impression_short || analysisFallbackMessage}
-            </p>
-          </Card>
+          <div ref={impressionCardRef}>
+            <Card className="space-y-3">
+              <button
+                type="button"
+                className="flex w-full items-start justify-between gap-3 text-left"
+                onClick={() => {
+                  const previousTop = impressionCardRef.current?.getBoundingClientRect().top ?? 0;
+                  setImpressionExpanded((current) => !current);
+                  requestAnimationFrame(() => {
+                    const nextTop = impressionCardRef.current?.getBoundingClientRect().top ?? 0;
+                    window.scrollBy({ top: nextTop - previousTop, left: 0, behavior: "auto" });
+                  });
+                }}
+              >
+                <div className="space-y-1">
+                  <h2 className="font-sans text-sm font-semibold uppercase tracking-[0.08em] text-paper-ink">Impression</h2>
+                  <p className="font-sans text-xs uppercase tracking-[0.08em] text-paper-muted">
+                    Summary, click to expand details
+                  </p>
+                </div>
+                <span className="mt-0.5 font-sans text-xs uppercase tracking-[0.08em] text-paper-muted">
+                  {impressionExpanded ? "Collapse details ▲" : "Expand details ▼"}
+                </span>
+              </button>
 
-          <Card className="space-y-2">
-            <h2 className="font-sans text-sm font-semibold uppercase tracking-[0.08em] text-paper-ink">
-              Detailed impression
-            </h2>
-            <p className="leading-relaxed text-paper-softInk">
-              {attempt.analysis?.impression_long || analysisFallbackMessage}
-            </p>
-          </Card>
+              {!impressionExpanded ? (
+                <div className="space-y-3">
+                  <p className="leading-relaxed text-paper-softInk">
+                    {attempt.analysis ? collapsedSummary || shortImpression : analysisFallbackMessage}
+                  </p>
+                  <ul className="space-y-2 text-paper-softInk">
+                    <li>
+                      <span className="font-sans text-xs uppercase tracking-[0.08em] text-paper-muted">What&apos;s working</span>
+                      <p className="mt-1 leading-relaxed">{whatIsWorking}</p>
+                    </li>
+                    <li>
+                      <span className="font-sans text-xs uppercase tracking-[0.08em] text-paper-muted">What&apos;s missing</span>
+                      <p className="mt-1 leading-relaxed">{whatIsMissing}</p>
+                    </li>
+                    <li>
+                      <span className="font-sans text-xs uppercase tracking-[0.08em] text-paper-muted">What to do next</span>
+                      <p className="mt-1 leading-relaxed">{whatToDoNext}</p>
+                    </li>
+                  </ul>
+                </div>
+              ) : (
+                <p className="leading-relaxed text-paper-softInk">
+                  {attempt.analysis?.impression_long || analysisFallbackMessage}
+                </p>
+              )}
+            </Card>
+          </div>
+
+          <InterviewTimelineCard
+            sessionId={attempt.id}
+            transcript={attempt.transcript}
+            onJumpToTranscript={(startTurnIndex, endTurnIndex) => {
+              setShowTranscript(true);
+              setFocusedRange({
+                start: startTurnIndex,
+                end: endTurnIndex,
+              });
+            }}
+          />
 
           <Card className="space-y-4">
             <div className="flex items-center justify-between gap-3">
@@ -168,22 +266,30 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
               <p className="text-paper-softInk">No turns yet.</p>
             ) : (
               <div className="space-y-3">
-                {attempt.transcript.map((turn) => (
-                  <div
-                    key={turn.id}
-                    className={`rounded-paper border px-4 py-3 ${
-                      turn.role === "assistant"
-                        ? "border-paper-border bg-paper-bg text-paper-ink"
-                        : "border-paper-accent/40 bg-paper-elevated text-paper-softInk"
-                    }`}
-                  >
-                    <p className="mb-2 font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">
-                      {turn.role === "assistant" ? "Interviewer" : "You"} · {formatDateTime(turn.createdAt)}
-                      {turn.answerDurationSec ? ` · ${turn.answerDurationSec}s` : ""}
-                    </p>
-                    <p className="whitespace-pre-wrap leading-relaxed">{turn.content}</p>
-                  </div>
-                ))}
+                {attempt.transcript.map((turn, index) => {
+                  const isFocused =
+                    focusedRange !== null && index >= focusedRange.start && index <= focusedRange.end;
+
+                  return (
+                    <div
+                      key={turn.id}
+                      ref={(node) => {
+                        transcriptTurnRefs.current[index] = node;
+                      }}
+                      className={`rounded-paper border px-4 py-3 ${
+                        turn.role === "assistant"
+                          ? "border-paper-border bg-paper-bg text-paper-ink"
+                          : "border-paper-accent/40 bg-paper-elevated text-paper-softInk"
+                      } ${isFocused ? "ring-2 ring-paper-accent/45" : ""}`}
+                    >
+                      <p className="mb-2 font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">
+                        {turn.role === "assistant" ? "Interviewer" : "You"} · {formatDateTime(turn.createdAt)}
+                        {turn.answerDurationSec ? ` · ${turn.answerDurationSec}s` : ""}
+                      </p>
+                      <p className="whitespace-pre-wrap leading-relaxed">{turn.content}</p>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </Card>
