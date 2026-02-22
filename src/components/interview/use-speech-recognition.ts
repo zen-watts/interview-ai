@@ -64,12 +64,15 @@ function getRecognitionConstructor(): SpeechRecognitionConstructor | null {
   return ctor || webkitCtor || null;
 }
 
+const TRANSIENT_ERRORS = new Set(["no-speech", "aborted"]);
+
 export function useSpeechRecognition(
   onFinalTranscript: (text: string) => void,
 ): UseSpeechRecognitionResult {
   const recognitionRef = useRef<RecognitionInstance | null>(null);
   const timerRef = useRef<number | null>(null);
   const startedAtRef = useRef<number | null>(null);
+  const shouldRestartRef = useRef(false);
 
   const [listening, setListening] = useState(false);
   const [interimText, setInterimText] = useState("");
@@ -86,6 +89,7 @@ export function useSpeechRecognition(
   }, []);
 
   const stop = useCallback(() => {
+    shouldRestartRef.current = false;
     recognitionRef.current?.stop();
     clearTimer();
 
@@ -136,6 +140,17 @@ export function useSpeechRecognition(
     };
 
     recognition.onend = () => {
+      if (shouldRestartRef.current) {
+        shouldRestartRef.current = false;
+        try {
+          recognition.start();
+          logger.debug("Speech capture auto-restarted after transient error.");
+          return;
+        } catch {
+          logger.warn("Auto-restart failed, stopping capture.");
+        }
+      }
+
       setListening(false);
       setInterimText("");
       clearTimer();
@@ -143,8 +158,16 @@ export function useSpeechRecognition(
     };
 
     recognition.onerror = (event) => {
-      setLastError(event.error || "Speech recognition error");
-      logger.error("Speech recognition reported an error.", { error: event.error });
+      const errorCode = event.error || "unknown";
+
+      if (TRANSIENT_ERRORS.has(errorCode)) {
+        shouldRestartRef.current = true;
+        logger.debug("Transient speech error, will auto-restart.", { error: errorCode });
+        return;
+      }
+
+      setLastError(errorCode);
+      logger.error("Speech recognition reported an error.", { error: errorCode });
     };
 
     recognition.onresult = (event) => {
@@ -172,6 +195,7 @@ export function useSpeechRecognition(
     recognitionRef.current = recognition;
 
     return () => {
+      shouldRestartRef.current = false;
       clearTimer();
       recognition.onresult = null;
       recognition.onerror = null;

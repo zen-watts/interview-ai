@@ -81,11 +81,19 @@ export interface TranscriptTurn {
   answerDurationSec?: number;
 }
 
+export interface CompetencyScore {
+  key: string;
+  label: string;
+  score: number;
+  evidence: string;
+}
+
 export interface InterviewAnalysis {
   impression_short: string;
   impression_long: string;
   red_flags: string[];
   top_improvement: string;
+  competencies?: CompetencyScore[];
 }
 
 export interface InterviewAttempt {
