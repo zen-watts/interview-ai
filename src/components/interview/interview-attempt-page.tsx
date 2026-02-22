@@ -134,6 +134,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
   const [responseSendActive, setResponseSendActive] = useState(false);
   const [responseSendKey, setResponseSendKey] = useState(0);
   const [errorFading, setErrorFading] = useState(false);
+  const [turnRequestFailed, setTurnRequestFailed] = useState(false);
   const [interviewerVoiceEnabled, setInterviewerVoiceEnabled] = useState(true);
   const [interviewerSpeechActive, setInterviewerSpeechActive] = useState(false);
 
@@ -377,6 +378,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
       loadingTurn ||
       loadingAnalysis ||
       responseSendActive ||
+      turnRequestFailed ||
       !speechSupported ||
       speechError ||
       speechListening
@@ -408,6 +410,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     speechListening,
     speechSupported,
     startSpeech,
+    turnRequestFailed,
   ]);
 
   useEffect(() => {
@@ -619,6 +622,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
     setLoadingTurn(true);
     setError(null);
+    setTurnRequestFailed(false);
 
     try {
       logger.info("interview.turn.request.started", {
@@ -671,8 +675,13 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
       });
     } catch (turnError) {
       const message = turnError instanceof Error ? turnError.message : "Failed to generate next question.";
-      setAttemptStatus(attempt.id, "error", message);
-      setError(message);
+      setAttemptStatus(attempt.id, "in_progress", message);
+      setError(message || "Could not fetch the next interviewer question. Retry to continue.");
+      setTurnRequestFailed(true);
+      setTypingInProgress(false);
+      setPhase("active");
+      setForegroundVisible(true);
+      setQuestionVisible(false);
       logger.error("interview.turn.request.failed", { message, attemptId: attempt.id });
     } finally {
       setLoadingTurn(false);
@@ -1004,6 +1013,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
                 typingInProgress ||
                 loadingTurn ||
                 loadingAnalysis ||
+                turnRequestFailed ||
                 responseSendActive
               }
             >
@@ -1011,6 +1021,8 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
                 ? "Question typing..."
                 : loadingTurn
                   ? "Loading next question..."
+                  : turnRequestFailed
+                    ? "Retry needed"
                   : responseSendActive
                     ? "Sending..."
                     : "Finish Response"}
@@ -1046,6 +1058,20 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
                     <div className={`transition-opacity duration-300 ${errorFading ? "opacity-0" : "opacity-100"}`}>
                       <Notice className="w-full border-slate-500 text-slate-100" tone="error" message={error} />
                     </div>
+                  ) : null}
+
+                  {turnRequestFailed ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="border-slate-500/45 bg-slate-900/30 text-slate-100 hover:border-slate-300"
+                      onClick={() => {
+                        void requestNextTurn(attempt.transcript);
+                      }}
+                      disabled={interviewerSpeechActive || typingInProgress || loadingTurn || loadingAnalysis}
+                    >
+                      Retry next question
+                    </Button>
                   ) : null}
 
                   {attempt.lastError && !error ? (

@@ -20,6 +20,15 @@ interface ApiErrorPayload {
   error?: string;
 }
 
+const TURN_REQUEST_MAX_ATTEMPTS = 2;
+const TURN_REQUEST_RETRY_DELAY_MS = 450;
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 async function readErrorMessage(response: Response) {
   try {
     const payload = (await response.json()) as ApiErrorPayload;
@@ -91,29 +100,66 @@ export async function requestInterviewTurn(input: {
     transcriptLength: input.transcript.length,
   });
 
-  const response = await fetch("/api/ai/interview", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(input),
-  });
+  for (let attempt = 1; attempt <= TURN_REQUEST_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch("/api/ai/interview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(input),
+      });
 
-  if (!response.ok) {
-    const message = await readErrorMessage(response);
-    logger.error("Next interviewer turn request failed.", { message });
-    throw new Error(message);
+      if (!response.ok) {
+        const message = await readErrorMessage(response);
+        const error = new Error(message) as Error & { status?: number };
+        error.status = response.status;
+        throw error;
+      }
+
+      const payload = (await response.json()) as {
+        response?: string;
+        question?: string;
+        message?: string;
+        isEnd?: boolean;
+      };
+
+      if (
+        typeof payload.response !== "string" ||
+        typeof payload.question !== "string" ||
+        typeof payload.message !== "string" ||
+        typeof payload.isEnd !== "boolean"
+      ) {
+        throw new Error("Server returned an invalid interview turn payload.");
+      }
+
+      logger.debug("Received next interviewer turn.", { isEnd: payload.isEnd });
+
+      return payload as { response: string; question: string; message: string; isEnd: boolean };
+    } catch (requestError) {
+      const status =
+        typeof requestError === "object" &&
+        requestError !== null &&
+        "status" in requestError &&
+        typeof (requestError as { status?: unknown }).status === "number"
+          ? ((requestError as { status: number }).status)
+          : undefined;
+
+      const retryable = status === undefined || status >= 500;
+      const message = requestError instanceof Error ? requestError.message : "Failed to request next turn.";
+
+      if (retryable && attempt < TURN_REQUEST_MAX_ATTEMPTS) {
+        logger.warn("Next interviewer turn request failed; retrying.", { message, attempt, status });
+        await delay(TURN_REQUEST_RETRY_DELAY_MS * attempt);
+        continue;
+      }
+
+      logger.error("Next interviewer turn request failed.", { message, status, attempt });
+      throw new Error(message || "Failed to request next interviewer turn.");
+    }
   }
 
-  const payload = (await response.json()) as {
-    response: string;
-    question: string;
-    message: string;
-    isEnd: boolean;
-  };
-  logger.debug("Received next interviewer turn.", { isEnd: payload.isEnd });
-
-  return payload;
+  throw new Error("Failed to request next interviewer turn.");
 }
 
 /**

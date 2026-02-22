@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CompetencyCard } from "@/src/components/interview/charts/competency-card";
 import { ConclusionDashboard } from "@/src/components/interview/conclusion-dashboard";
-import { InterviewTimelineCard } from "@/src/components/interview/interview-timeline-card";
 import { useAppStore } from "@/src/components/providers/app-store-provider";
 import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
@@ -54,9 +53,7 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
   const [error, setError] = useState<string | null>(null);
   const [impressionExpanded, setImpressionExpanded] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
-  const [focusedRange, setFocusedRange] = useState<{ start: number; end: number } | null>(null);
   const impressionCardRef = useRef<HTMLDivElement | null>(null);
-  const transcriptTurnRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   const role = useMemo(() => store.roles.find((item) => item.id === roleId) ?? null, [roleId, store.roles]);
   const attempt = useMemo(
@@ -73,17 +70,6 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
       router.replace(`/roles/${role.id}/attempts/${attempt.id}`);
     }
   }, [attempt, role, router]);
-
-  useEffect(() => {
-    if (!showTranscript || !focusedRange) {
-      return;
-    }
-
-    const targetNode = transcriptTurnRefs.current[focusedRange.start];
-    if (targetNode) {
-      targetNode.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [focusedRange, showTranscript]);
 
   if (!role || !attempt) {
     return (
@@ -242,17 +228,6 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
           {attempt.analysis?.competencies?.length ? (
             <CompetencyCard competencies={attempt.analysis.competencies} />
           ) : null}
-          <InterviewTimelineCard
-            sessionId={attempt.id}
-            transcript={attempt.transcript}
-            onJumpToTranscript={(startTurnIndex, endTurnIndex) => {
-              setShowTranscript(true);
-              setFocusedRange({
-                start: startTurnIndex,
-                end: endTurnIndex,
-              });
-            }}
-          />
 
           <Card className="space-y-4">
             <div className="flex items-center justify-between gap-3">
@@ -266,21 +241,15 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
               <p className="text-paper-softInk">No turns yet.</p>
             ) : (
               <div className="space-y-3">
-                {attempt.transcript.map((turn, index) => {
-                  const isFocused =
-                    focusedRange !== null && index >= focusedRange.start && index <= focusedRange.end;
-
+                {attempt.transcript.map((turn) => {
                   return (
                     <div
                       key={turn.id}
-                      ref={(node) => {
-                        transcriptTurnRefs.current[index] = node;
-                      }}
                       className={`rounded-paper border px-4 py-3 ${
                         turn.role === "assistant"
                           ? "border-paper-border bg-paper-bg text-paper-ink"
                           : "border-paper-accent/40 bg-paper-elevated text-paper-softInk"
-                      } ${isFocused ? "ring-2 ring-paper-accent/45" : ""}`}
+                      }`}
                     >
                       <p className="mb-2 font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">
                         {turn.role === "assistant" ? "Interviewer" : "You"} · {formatDateTime(turn.createdAt)}
