@@ -3,10 +3,10 @@ import { Inter, Source_Serif_4 } from "next/font/google";
 import type { ReactNode } from "react";
 
 import "@/app/globals.css";
-import { DevTools } from "@/src/components/dev/dev-tools";
 import { AppBreadcrumbs } from "@/src/components/navigation/app-breadcrumbs";
 import { PageFrame } from "@/src/components/navigation/page-frame";
 import { AppStoreProvider } from "@/src/components/providers/app-store-provider";
+import { DevTools } from "@/src/components/dev/dev-tools";
 
 const sourceSerif = Source_Serif_4({
   variable: "--font-serif",
