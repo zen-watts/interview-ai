@@ -86,15 +86,6 @@ export function HomePage() {
         <h1 className="text-4xl leading-tight md:text-5xl">Role Dashboard</h1>
       </header>
 
-      {hasRoles ? (
-        <div className="flex flex-wrap gap-3">
-          <Button type="button" onClick={() => setIsCreateOpen(true)}>
-            <span>Create role</span>
-            <span className="ml-2 text-lg leading-none">+</span>
-          </Button>
-        </div>
-      ) : null}
-
       {!hasRoles ? (
         <Card className="space-y-3">
           <h2 className="text-2xl">No roles yet</h2>
@@ -118,16 +109,24 @@ export function HomePage() {
             </section>
           )}
 
-          {allRoles.length > 0 && (
-            <section className="space-y-4">
-              <h2 className="text-lg font-medium">All roles</h2>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {allRoles.map((role) => (
-                  <RoleCard key={role.id} role={role} />
-                ))}
-              </div>
-            </section>
-          )}
+          <section className="space-y-4">
+            <h2 className="text-lg font-medium">All roles</h2>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <button
+                type="button"
+                className="text-left"
+                onClick={() => setIsCreateOpen(true)}
+              >
+                <Card className="flex h-full flex-col items-center justify-center gap-3 transition hover:border-paper-accent">
+                  <span className="text-4xl leading-none text-paper-muted">+</span>
+                  <span className="font-sans text-sm text-paper-muted">Create role</span>
+                </Card>
+              </button>
+              {allRoles.map((role) => (
+                <RoleCard key={role.id} role={role} />
+              ))}
+            </div>
+          </section>
         </>
       )}
 
