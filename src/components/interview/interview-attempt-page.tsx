@@ -782,11 +782,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
     cancelInterviewerSpeech();
 
-    if (attempt.transcript.length > 0 && !completionStartedRef.current) {
-      void completeInterview(attempt.transcript);
-    }
-
-    router.replace(`/roles/${role.id}/attempts/${attempt.id}/conclusion`);
+    router.replace(`/roles/${role.id}`);
   };
 
   const toggleInterviewerVoice = () => {

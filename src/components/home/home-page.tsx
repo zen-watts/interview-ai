@@ -92,11 +92,7 @@ export function HomePage() {
 
         <Link
           href="/profile"
-          className={cn(
-            "inline-flex items-center justify-center rounded-paper border px-3 py-2 text-sm font-medium transition",
-            "border-paper-border bg-transparent text-paper-softInk hover:border-paper-accent hover:text-paper-ink",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paper-accent/30",
-          )}
+          className="self-start -mt-4 font-sans text-xs uppercase tracking-[0.16em] text-paper-softInk hover:text-paper-ink"
         >
           Edit Profile
         </Link>
