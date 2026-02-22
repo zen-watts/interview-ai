@@ -76,6 +76,16 @@ const analysisSchema = z.object({
   impression_long: z.string(),
   red_flags: z.array(z.string()),
   top_improvement: z.string(),
+  competencies: z
+    .array(
+      z.object({
+        key: z.string(),
+        label: z.string(),
+        score: z.number(),
+        evidence: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 const devSettingsSchema = z.object({

@@ -89,6 +89,10 @@ export async function POST(request: Request) {
       impression_long: normalizeAnalysisText(parsedAnalysis.impression_long),
       red_flags: parsedAnalysis.red_flags.map((flag) => normalizeAnalysisText(flag)),
       top_improvement: normalizeAnalysisText(parsedAnalysis.top_improvement),
+      competencies: parsedAnalysis.competencies?.map((c) => ({
+        ...c,
+        evidence: normalizeAnalysisText(c.evidence),
+      })),
     };
 
     logger.info("Interview analysis generated successfully.", {

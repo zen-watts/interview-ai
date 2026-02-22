@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { CompetencyCard } from "@/src/components/interview/charts/competency-card";
+import { ConclusionDashboard } from "@/src/components/interview/conclusion-dashboard";
 import { InterviewTimelineCard } from "@/src/components/interview/interview-timeline-card";
 import { useAppStore } from "@/src/components/providers/app-store-provider";
 import { Button } from "@/src/components/ui/button";
@@ -240,6 +242,10 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
             </Card>
           </div>
 
+          {attempt.analysis?.competencies?.length ? (
+            <CompetencyCard competencies={attempt.analysis.competencies} />
+          ) : null}
+
           <InterviewTimelineCard
             sessionId={attempt.id}
             transcript={attempt.transcript}
@@ -317,6 +323,8 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
               {attempt.analysis?.top_improvement || analysisFallbackMessage}
             </p>
           </Card>
+
+          <ConclusionDashboard transcript={attempt.transcript} />
 
           {store.devSettings?.showInterviewerScriptOnConclusion && attempt.script ? (
             <Card className="space-y-3">
