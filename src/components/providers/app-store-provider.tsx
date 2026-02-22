@@ -31,16 +31,17 @@ const logger = createLogger("store-provider");
 
 interface RoleInput {
   title: string;
-  roleDescription: string;
+  organizationName: string;
   organizationDescription: string;
   fullJobDescription: string;
-  additionalContext: string;
 }
 
 interface ProfileInput {
   name: string;
   targetJob: string;
   experienceLevel: UserProfile["experienceLevel"];
+  age: UserProfile["age"];
+  pronouns: UserProfile["pronouns"];
   resumeText: string;
   resumeSummary: string;
 }
@@ -51,6 +52,8 @@ interface AppStoreContextValue {
   saveProfile: (input: ProfileInput) => void;
   createRole: (input: RoleInput) => RoleProfile;
   updateRole: (roleId: string, input: RoleInput) => void;
+  toggleRoleFavorite: (roleId: string) => void;
+  deleteRole: (roleId: string) => void;
   createAttempt: (roleId: string, config: InterviewConfig) => InterviewAttempt;
   patchAttempt: (attemptId: string, patch: Partial<InterviewAttempt>) => void;
   appendTranscriptTurn: (attemptId: string, turn: TranscriptTurn) => void;
@@ -112,10 +115,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const role: RoleProfile = {
       id: createId(),
       title: input.title.trim(),
-      roleDescription: input.roleDescription.trim(),
+      organizationName: input.organizationName.trim(),
       organizationDescription: input.organizationDescription.trim(),
       fullJobDescription: input.fullJobDescription.trim(),
-      additionalContext: input.additionalContext.trim(),
+      isFavorited: false,
       createdAt: now,
       updatedAt: now,
     };
@@ -142,10 +145,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const updatedRole = {
           ...role,
           title: input.title.trim(),
-          roleDescription: input.roleDescription.trim(),
+          organizationName: input.organizationName.trim(),
           organizationDescription: input.organizationDescription.trim(),
           fullJobDescription: input.fullJobDescription.trim(),
-          additionalContext: input.additionalContext.trim(),
           updatedAt: nowIso(),
         };
 
@@ -156,6 +158,40 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       return {
         ...current,
         roles,
+      };
+    });
+  }, []);
+
+  const toggleRoleFavorite = useCallback((roleId: string) => {
+    setStore((current) => {
+      const roles = current.roles.map((role) => {
+        if (role.id !== roleId) {
+          return role;
+        }
+
+        logger.info("Role favorite toggled.", { roleId, isFavorited: !role.isFavorited });
+        return { ...role, isFavorited: !role.isFavorited };
+      });
+
+      return { ...current, roles };
+    });
+  }, []);
+
+  const deleteRole = useCallback((roleId: string) => {
+    setStore((current) => {
+      const attemptsToRemove = current.attempts.filter((attempt) => attempt.roleId === roleId).length;
+      const nextRoles = current.roles.filter((role) => role.id !== roleId);
+      const nextAttempts = current.attempts.filter((attempt) => attempt.roleId !== roleId);
+
+      logger.info("Role profile deleted.", {
+        roleId,
+        removedAttempts: attemptsToRemove,
+      });
+
+      return {
+        ...current,
+        roles: nextRoles,
+        attempts: nextAttempts,
       };
     });
   }, []);
@@ -319,6 +355,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       saveProfile,
       createRole,
       updateRole,
+      toggleRoleFavorite,
+      deleteRole,
       createAttempt,
       patchAttempt,
       appendTranscriptTurn,
@@ -332,6 +370,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       appendTranscriptTurn,
       createAttempt,
       createRole,
+      deleteRole,
       hydrated,
       patchAttempt,
       replaceTranscript,
@@ -341,11 +380,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setAttemptStatus,
       patchDevSettings,
       store,
+      toggleRoleFavorite,
       updateRole,
     ],
   );
 
-  return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
+    return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
 }
 
 export function useAppStore() {

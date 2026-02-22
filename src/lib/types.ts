@@ -32,6 +32,8 @@ export interface UserProfile {
   name: string;
   targetJob: string;
   experienceLevel: ExperienceLevel;
+  age: number | null;
+  pronouns: string;
   resumeText: string;
   resumeSummary: string;
   createdAt: string;
@@ -41,10 +43,10 @@ export interface UserProfile {
 export interface RoleProfile {
   id: string;
   title: string;
-  roleDescription: string;
+  organizationName: string;
   organizationDescription: string;
   fullJobDescription: string;
-  additionalContext: string;
+  isFavorited: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -97,4 +99,12 @@ export interface AppStoreV1 {
   devSettings: DevSettings;
 }
 
-export type AppStore = AppStoreV1;
+export interface AppStoreV2 {
+  schemaVersion: 2;
+  profile: UserProfile | null;
+  roles: RoleProfile[];
+  attempts: InterviewAttempt[];
+  devSettings: DevSettings;
+}
+
+export type AppStore = AppStoreV2;

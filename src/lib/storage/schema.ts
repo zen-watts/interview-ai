@@ -4,11 +4,10 @@ import {
   EXPERIENCE_LEVEL_OPTIONS,
   INTERVIEW_CATEGORY_OPTIONS,
   type AppStore,
-  type AppStoreV1,
 } from "@/src/lib/types";
 
 export const STORAGE_KEY = "interview_ai_v1";
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 const experienceLevelValues = EXPERIENCE_LEVEL_OPTIONS.map((option) => option.value) as [
   (typeof EXPERIENCE_LEVEL_OPTIONS)[number]["value"],
@@ -21,8 +20,21 @@ const profileSchema = z.object({
   name: z.string().min(1),
   targetJob: z.string().min(1),
   experienceLevel: z.enum(experienceLevelValues),
+  age: z.number().int().min(1).max(120).nullable().default(null),
+  pronouns: z.string().default(""),
   resumeText: z.string(),
   resumeSummary: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const roleSchemaV1 = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  roleDescription: z.string(),
+  organizationDescription: z.string(),
+  fullJobDescription: z.string(),
+  additionalContext: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -30,10 +42,10 @@ const profileSchema = z.object({
 const roleSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
-  roleDescription: z.string(),
+  organizationName: z.string(),
   organizationDescription: z.string(),
   fullJobDescription: z.string(),
-  additionalContext: z.string(),
+  isFavorited: z.boolean().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -81,16 +93,25 @@ const attemptSchema = z.object({
 const appStoreV1Schema = z.object({
   schemaVersion: z.literal(1),
   profile: profileSchema.nullable(),
-  roles: z.array(roleSchema),
+  roles: z.array(roleSchemaV1),
   attempts: z.array(attemptSchema),
-  devSettings: devSettingsSchema.optional(),
 });
 
-export const appStoreSchema = appStoreV1Schema;
+const appStoreV2Schema = z.object({
+  schemaVersion: z.literal(2),
+  profile: profileSchema.nullable(),
+  roles: z.array(roleSchema),
+  attempts: z.array(attemptSchema),
+  devSettings: devSettingsSchema.default({
+    showInterviewerScriptOnConclusion: false,
+  }),
+});
 
-export function createEmptyStore(): AppStoreV1 {
+export const appStoreSchema = appStoreV2Schema;
+
+export function createEmptyStore(): AppStore {
   return {
-    schemaVersion: CURRENT_SCHEMA_VERSION,
+    schemaVersion: 2 as const,
     profile: null,
     roles: [],
     attempts: [],
@@ -107,17 +128,57 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
 
   const value = rawValue as { schemaVersion?: number };
 
-  if (value.schemaVersion === 1) {
-    const parsed = appStoreSchema.safeParse(value);
+  if (value.schemaVersion === 2) {
+    const parsed = appStoreV2Schema.safeParse(value);
     if (parsed.success) {
       return {
         ...parsed.data,
+        profile: parsed.data.profile
+          ? {
+              ...parsed.data.profile,
+              age: parsed.data.profile.age,
+              pronouns: parsed.data.profile.pronouns,
+            }
+          : null,
+        roles: parsed.data.roles.map((role) => ({
+          ...role,
+          isFavorited: role.isFavorited ?? false,
+        })),
+        devSettings: parsed.data.devSettings,
+      };
+    }
+    return createEmptyStore();
+  }
+
+  if (value.schemaVersion === 1) {
+    const parsed = appStoreV1Schema.safeParse(value);
+    if (parsed.success) {
+      const v1 = parsed.data;
+      return {
+        schemaVersion: 2 as const,
+        profile: v1.profile
+          ? {
+              ...v1.profile,
+              age: v1.profile.age ?? null,
+              pronouns: v1.profile.pronouns ?? "",
+            }
+          : null,
+        roles: v1.roles.map((role) => ({
+          id: role.id,
+          title: role.title,
+          organizationName: "",
+          organizationDescription: role.organizationDescription,
+          fullJobDescription: role.fullJobDescription,
+          isFavorited: false,
+          createdAt: role.createdAt,
+          updatedAt: role.updatedAt,
+        })),
+        attempts: v1.attempts,
         devSettings: {
-          showInterviewerScriptOnConclusion: parsed.data.devSettings?.showInterviewerScriptOnConclusion ?? false,
+          showInterviewerScriptOnConclusion: false,
         },
       };
     }
-
     return createEmptyStore();
   }
 

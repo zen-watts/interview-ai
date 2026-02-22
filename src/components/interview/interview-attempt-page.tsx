@@ -284,7 +284,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
       <main className="space-y-6">
         <Card className="space-y-3">
           <h1 className="text-3xl">Interview attempt not found</h1>
-          <p className="text-paper-softInk">This interview attempt does not exist in local storage.</p>
+          <p className="text-paper-softInk">This practice session does not exist in local storage.</p>
           <Link href="/">
             <Button>Back to home</Button>
           </Link>

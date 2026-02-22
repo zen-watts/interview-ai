@@ -39,7 +39,7 @@ All data is persisted in browser `localStorage` using a typed schema and migrati
 
 ### User flow
 
-1. User opens a role and creates an interview attempt.
+1. User opens a role and creates a practice session.
 2. User configures interview knobs (persona, follow-up intensity, length, category, notes).
 3. App immediately generates and stores an interviewer script.
 4. User sees a pre-interview overlay with role + organization context and a single `Begin` action.

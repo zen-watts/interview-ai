@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { useAppStore } from "@/src/components/providers/app-store-provider";
 import { AttemptForm } from "@/src/components/roles/attempt-form";
@@ -24,17 +25,15 @@ const statusCopy: Record<string, string> = {
 
 function toRoleFormValues(values: {
   title: string;
-  roleDescription: string;
+  organizationName: string;
   organizationDescription: string;
   fullJobDescription: string;
-  additionalContext: string;
 }): RoleFormValues {
   return {
     title: values.title,
-    roleDescription: values.roleDescription,
+    organizationName: values.organizationName,
     organizationDescription: values.organizationDescription,
     fullJobDescription: values.fullJobDescription,
-    additionalContext: values.additionalContext,
   };
 }
 
@@ -46,7 +45,9 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
     setAttemptScript,
     setAttemptStatus,
     patchAttempt,
+    deleteRole,
   } = useAppStore();
+  const router = useRouter();
 
   const [editOpen, setEditOpen] = useState(false);
   const [attemptOpen, setAttemptOpen] = useState(false);
@@ -57,7 +58,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
   const attempts = useMemo(() => {
     return store.attempts
       .filter((item) => item.roleId === roleId)
-      .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1));
+      .sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1));
   }, [store.attempts, roleId]);
 
   if (!role) {
@@ -78,12 +79,9 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
     <main className="space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <Link href="/" className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted hover:text-paper-ink">
-            Home
-          </Link>
           <h1 className="text-4xl leading-tight">{role.title}</h1>
           <p className="max-w-3xl text-paper-softInk">
-            {role.roleDescription || role.organizationDescription || "Add context in settings to personalize interviews."}
+            {role.organizationName || role.organizationDescription || "Add context in settings to personalize interviews."}
           </p>
         </div>
 
@@ -96,11 +94,11 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
       </header>
 
       <section className="space-y-3">
-        <h2 className="text-2xl">Interview attempts</h2>
+        <h2 className="text-2xl">Times practiced</h2>
 
         {attempts.length === 0 ? (
           <Card className="space-y-3">
-            <p className="text-paper-softInk">No interview attempts yet for this role.</p>
+            <p className="text-paper-softInk">No times practiced yet for this role.</p>
             <Button type="button" onClick={() => setAttemptOpen(true)}>
               Create interview
             </Button>
@@ -148,6 +146,25 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
               setEditOpen(false);
             }}
             onCancel={() => setEditOpen(false)}
+            extraActions={
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => {
+                  const confirmed = window.confirm(
+                    "Delete this role and all practice sessions tied to it?",
+                  );
+                  if (!confirmed) {
+                    return;
+                  }
+                  deleteRole(role.id);
+                  setEditOpen(false);
+                  router.push("/");
+                }}
+              >
+                Delete
+              </Button>
+            }
           />
         </Modal>
       ) : null}

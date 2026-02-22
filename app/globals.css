@@ -188,6 +188,64 @@ textarea {
   will-change: transform, opacity, filter;
 }
 
+@keyframes modalOverlayIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes modalOverlayOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes modalPanelIn {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.965);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalPanelOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.95);
+    filter: blur(2px);
+  }
+}
+
+.modal-overlay-exit {
+  animation: modalOverlayOut 200ms ease-in forwards;
+}
+
+.modal-panel-exit {
+  animation: modalPanelOut 240ms ease-in forwards;
+}
+
+.modal-overlay-enter {
+  animation: modalOverlayIn 200ms ease-out forwards;
+}
+
+.modal-panel-enter {
+  animation: modalPanelIn 220ms ease-out forwards;
+}
+
 @keyframes interviewAmbienceDrift {
   0% {
     transform: translate3d(-3%, -2%, 0) scale(1);
