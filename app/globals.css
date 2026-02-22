@@ -362,6 +362,31 @@ textarea {
   transform: translateY(0) scale(1);
 }
 
+@keyframes loadingDots {
+  0% {
+    width: 0;
+  }
+  33% {
+    width: 0.35em;
+  }
+  66% {
+    width: 0.7em;
+  }
+  100% {
+    width: 1.05em;
+  }
+}
+
+.loading-dots::after {
+  content: "...";
+  display: inline-block;
+  width: 0;
+  margin-left: 0.2em;
+  overflow: hidden;
+  vertical-align: baseline;
+  animation: loadingDots 900ms steps(3, end) infinite;
+}
+
 @keyframes interviewAmbienceDrift {
   0% {
     transform: translate3d(-3%, -2%, 0) scale(1);

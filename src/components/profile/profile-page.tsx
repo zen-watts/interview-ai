@@ -425,16 +425,18 @@ function ProfileFormFields({
               {resumeUploadFileName ? resumeUploadFileName : "No file selected yet."}
             </p>
             {resumeUploadFileName ? (
-              <span className="font-sans text-[0.7rem] uppercase tracking-[0.16em] text-paper-muted">
-                Ready
+              <span
+                className={`font-sans text-[0.7rem] uppercase tracking-[0.16em] text-paper-muted ${
+                  resumeUploadLoading ? "loading-dots" : ""
+                }`}
+              >
+                {resumeUploadLoading ? "Uploading" : "Ready"}
               </span>
             ) : null}
           </div>
         </div>
 
-        {resumeUploadStatus ? <Notice message={resumeUploadStatus} tone="success" /> : null}
         {resumeUploadError ? <Notice message={resumeUploadError} tone="error" /> : null}
-        {resumeUploadLoading ? <p className="text-sm text-paper-softInk">Working on your resume...</p> : null}
 
         <div className="flex flex-wrap items-center gap-3">
           <Button type="button" onClick={onResumeSave} disabled={!canSaveResumeUpload}>

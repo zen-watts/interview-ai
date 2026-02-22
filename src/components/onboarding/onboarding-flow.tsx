@@ -283,21 +283,23 @@ export function OnboardingFlow() {
                     }}
                   />
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-paper border border-paper-border bg-paper-bg px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-paper border border-paper-border bg-paper-bg px-3 py-2">
                   <p className="text-sm text-paper-muted">
                     {resumeFileName ? resumeFileName : "No file selected yet."}
                   </p>
                   {resumeFileName ? (
-                    <span className="font-sans text-[0.7rem] uppercase tracking-[0.16em] text-paper-muted">
-                      Ready
+                    <span
+                      className={`font-sans text-[0.7rem] uppercase tracking-[0.16em] text-paper-muted ${
+                        uploading ? "loading-dots" : ""
+                      }`}
+                    >
+                      {uploading ? "Uploading" : "Ready"}
                     </span>
                   ) : null}
                 </div>
               </div>
 
-              {statusMessage ? <Notice message={statusMessage} tone="success" /> : null}
               {error ? <Notice message={error} tone="error" /> : null}
-              {uploading ? <p className="text-sm text-paper-softInk">Working on your resume...</p> : null}
             </div>
           ) : null}
 
