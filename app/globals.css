@@ -74,7 +74,7 @@ textarea {
 
 .interview-question-text {
   max-width: min(92vw, 72rem);
-  font-size: clamp(1.6rem, 3.4vw, 3rem);
+  font-size: clamp(1.2rem, 2.55vw, 2.25rem);
   line-height: 1.18;
   text-wrap: pretty;
   overflow-wrap: anywhere;
@@ -82,12 +82,12 @@ textarea {
 }
 
 .interview-question-text-balanced {
-  font-size: clamp(1.4rem, 3vw, 2.55rem);
+  font-size: clamp(1.05rem, 2.25vw, 1.9125rem);
   line-height: 1.22;
 }
 
 .interview-question-text-compact {
-  font-size: clamp(1.2rem, 2.5vw, 2.1rem);
+  font-size: clamp(0.9rem, 1.875vw, 1.575rem);
   line-height: 1.24;
 }
 

@@ -17,6 +17,7 @@ interface Crumb {
 export function AppBreadcrumbs() {
   const pathname = usePathname();
   const { hydrated, store } = useAppStore();
+  const isInterviewSessionRoute = /^\/roles\/[^/]+\/attempts\/[^/]+$/.test(pathname);
 
   const crumbs = useMemo<Crumb[]>(() => {
     const base: Crumb[] = [{ href: "/", label: "Role Dashboard" }];
@@ -66,7 +67,7 @@ export function AppBreadcrumbs() {
     return base;
   }, [pathname, store.roles]);
 
-  if (!hydrated || !store.profile) {
+  if (!hydrated || !store.profile || isInterviewSessionRoute) {
     return null;
   }
 
