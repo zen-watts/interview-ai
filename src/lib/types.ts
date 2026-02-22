@@ -104,6 +104,7 @@ export interface AppStoreV2 {
   profile: UserProfile | null;
   roles: RoleProfile[];
   attempts: InterviewAttempt[];
+  devSettings: DevSettings;
 }
 
 export type AppStore = AppStoreV2;

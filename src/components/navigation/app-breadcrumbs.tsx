@@ -1,0 +1,93 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useMemo } from "react";
+
+import { useAppStore } from "@/src/components/providers/app-store-provider";
+
+interface Crumb {
+  href: string;
+  label: string;
+}
+
+/**
+ * Shared breadcrumb navigation shown in the top-left of the app container.
+ */
+export function AppBreadcrumbs() {
+  const pathname = usePathname();
+  const { hydrated, store } = useAppStore();
+
+  const crumbs = useMemo<Crumb[]>(() => {
+    const base: Crumb[] = [{ href: "/", label: "Home" }];
+
+    if (pathname === "/") {
+      return base;
+    }
+
+    const segments = pathname.split("/").filter(Boolean);
+
+    if (segments[0] !== "roles") {
+      return base;
+    }
+
+    const roleId = segments[1];
+    if (!roleId) {
+      return base;
+    }
+
+    const role = store.roles.find((item) => item.id === roleId);
+    base.push({
+      href: `/roles/${roleId}`,
+      label: role?.title || "Role",
+    });
+
+    if (segments[2] !== "attempts") {
+      return base;
+    }
+
+    const attemptId = segments[3];
+    if (!attemptId) {
+      return base;
+    }
+
+    base.push({
+      href: `/roles/${roleId}/attempts/${attemptId}`,
+      label: "Interview session",
+    });
+
+    if (segments[4] === "conclusion") {
+      base.push({
+        href: `/roles/${roleId}/attempts/${attemptId}/conclusion`,
+        label: "Analysis",
+      });
+    }
+
+    return base;
+  }, [pathname, store.roles]);
+
+  if (!hydrated || !store.profile) {
+    return null;
+  }
+
+  return (
+    <nav aria-label="Breadcrumb" className="mb-5 flex items-center gap-1 font-sans text-sm text-paper-softInk">
+      {crumbs.map((crumb, index) => {
+        const isCurrent = index === crumbs.length - 1;
+
+        return (
+          <div key={crumb.href} className="flex items-center gap-1">
+            {index > 0 ? <span className="text-paper-muted">/</span> : null}
+            {isCurrent ? (
+              <span className="text-paper-ink">{crumb.label}</span>
+            ) : (
+              <Link href={crumb.href} className="text-paper-softInk hover:text-paper-ink hover:underline">
+                {crumb.label}
+              </Link>
+            )}
+          </div>
+        );
+      })}
+    </nav>
+  );
+}

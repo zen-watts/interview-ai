@@ -34,6 +34,7 @@ const bodySchema = z.object({
     organizationName: z.string(),
     organizationDescription: z.string(),
     fullJobDescription: z.string(),
+    isFavorited: z.boolean().default(false),
     createdAt: z.string(),
     updatedAt: z.string(),
   }),
