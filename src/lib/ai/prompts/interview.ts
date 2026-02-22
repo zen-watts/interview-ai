@@ -10,6 +10,7 @@ export function buildInterviewSystemPrompt(script: string): string {
     "Hard constraints:",
     "- Ask exactly one interviewer message per turn.",
     "- Keep each interviewer message concise and natural.",
+    "- Ask a single realistic question per turn; do not combine multiple asks, slash-separated asks, or numbered sub-questions.",
     "- Use plain text only in interviewer turns (no markdown markers like **, *, _, #, bullets, or numbered lists).",
     "- Do not tell the candidate to use STAR and do not use Situation/Task/Action/Result section labels.",
     "- Do not provide coaching, hints, or feedback during interview turns.",

@@ -11,7 +11,7 @@ import { useAppStore } from "@/src/components/providers/app-store-provider";
 import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { Notice } from "@/src/components/ui/notice";
-import { requestInterviewAnalysis, requestInterviewTurn } from "@/src/lib/ai/client-api";
+import { requestInterviewAnalysis, requestInterviewTurn, requestInterviewerSpeech } from "@/src/lib/ai/client-api";
 import { createLogger } from "@/src/lib/logger";
 import { END_TOKEN, type TranscriptTurn } from "@/src/lib/types";
 import { createId } from "@/src/lib/utils/id";
@@ -20,9 +20,12 @@ import { formatDuration, nowIso } from "@/src/lib/utils/time";
 const logger = createLogger("interview-attempt-page");
 
 const QUESTION_FADE_MS = 420;
-const COMPLETE_DELAY_MS = 3000;
-const TYPING_INTERVAL_MS = 38;
-const RESPONSE_SEND_ANIMATION_MS = 2200;
+const TYPING_WORD_INTERVAL_MS = 110;
+const RESPONSE_SEND_ANIMATION_MS = 950;
+const COMPLETE_FADE_IN_MS = 350;
+const COMPLETE_HOLD_MS = 1000;
+const COMPLETE_FADE_OUT_MS = 350;
+const COMPLETE_SCENE_MS = COMPLETE_FADE_IN_MS + COMPLETE_HOLD_MS + COMPLETE_FADE_OUT_MS;
 const EMPTY_RESPONSE_ERROR = "Please respond before finishing this turn.";
 
 type InterviewVisualPhase = "intro" | "transition" | "active" | "complete";
@@ -57,16 +60,8 @@ function normalizeOrganizationName(value: string) {
   return `${trimmed.slice(0, 69).trim()}...`;
 }
 
-function typingStepSize(contentLength: number) {
-  if (contentLength <= 130) {
-    return 1;
-  }
-
-  if (contentLength <= 220) {
-    return 1;
-  }
-
-  return 2;
+function splitQuestionWords(question: string) {
+  return question.trim().split(/\s+/).filter(Boolean);
 }
 
 export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; attemptId: string }) {
@@ -89,12 +84,17 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
   const [responseSendActive, setResponseSendActive] = useState(false);
   const [responseSendKey, setResponseSendKey] = useState(0);
   const [errorFading, setErrorFading] = useState(false);
+  const [interviewerVoiceEnabled, setInterviewerVoiceEnabled] = useState(true);
+  const [interviewerSpeechActive, setInterviewerSpeechActive] = useState(false);
 
   const spokenAnswerRef = useRef("");
   const initializedRef = useRef(false);
   const completionStartedRef = useRef(false);
   const typingRunRef = useRef(0);
   const typingTimerRef = useRef<number | null>(null);
+  const interviewerSpeechRunRef = useRef(0);
+  const interviewerAudioRef = useRef<HTMLAudioElement | null>(null);
+  const interviewerAudioUrlRef = useRef<string | null>(null);
 
   const role = useMemo(() => store.roles.find((item) => item.id === roleId) ?? null, [roleId, store.roles]);
   const attempt = useMemo(
@@ -123,6 +123,95 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     spokenAnswerRef.current = "";
     resetSpeech();
   }, [resetSpeech]);
+
+  const clearInterviewerAudioResources = useCallback(() => {
+    if (interviewerAudioRef.current) {
+      interviewerAudioRef.current.pause();
+      interviewerAudioRef.current.onended = null;
+      interviewerAudioRef.current.onerror = null;
+      interviewerAudioRef.current.src = "";
+      interviewerAudioRef.current = null;
+    }
+
+    if (interviewerAudioUrlRef.current) {
+      URL.revokeObjectURL(interviewerAudioUrlRef.current);
+      interviewerAudioUrlRef.current = null;
+    }
+  }, []);
+
+  const cancelInterviewerSpeech = useCallback(() => {
+    interviewerSpeechRunRef.current += 1;
+    clearInterviewerAudioResources();
+    setInterviewerSpeechActive(false);
+  }, [clearInterviewerAudioResources]);
+
+  const playInterviewerSpeech = useCallback(
+    async (question: string) => {
+      if (!interviewerVoiceEnabled || !question.trim()) {
+        return;
+      }
+
+      const runId = interviewerSpeechRunRef.current + 1;
+      interviewerSpeechRunRef.current = runId;
+      clearInterviewerAudioResources();
+      setInterviewerSpeechActive(true);
+
+      logger.info("interviewer.tts.request.started", {
+        attemptId,
+        questionLength: question.length,
+      });
+
+      try {
+        const audioBlob = await requestInterviewerSpeech({ text: question });
+        if (interviewerSpeechRunRef.current !== runId) {
+          return;
+        }
+
+        const objectUrl = URL.createObjectURL(audioBlob);
+        interviewerAudioUrlRef.current = objectUrl;
+
+        const audio = new Audio(objectUrl);
+        audio.preload = "auto";
+        interviewerAudioRef.current = audio;
+
+        await new Promise<void>((resolve, reject) => {
+          audio.onended = () => {
+            resolve();
+          };
+
+          audio.onerror = () => {
+            reject(new Error("Interviewer voice playback failed."));
+          };
+
+          const playPromise = audio.play();
+          if (playPromise) {
+            playPromise.catch((playError) => {
+              reject(playError instanceof Error ? playError : new Error("Interviewer voice playback failed."));
+            });
+          }
+        });
+
+        logger.info("interviewer.tts.playback.completed", {
+          attemptId,
+          questionLength: question.length,
+        });
+      } catch (ttsError) {
+        if (interviewerSpeechRunRef.current === runId) {
+          const message = ttsError instanceof Error ? ttsError.message : "Interviewer speech unavailable.";
+          logger.warn("interviewer.tts.playback.failed", {
+            attemptId,
+            message,
+          });
+        }
+      } finally {
+        if (interviewerSpeechRunRef.current === runId) {
+          clearInterviewerAudioResources();
+          setInterviewerSpeechActive(false);
+        }
+      }
+    },
+    [attemptId, clearInterviewerAudioResources, interviewerVoiceEnabled],
+  );
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -160,12 +249,15 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
   useEffect(() => {
     return () => {
+      interviewerSpeechRunRef.current += 1;
+      clearInterviewerAudioResources();
+
       if (typingTimerRef.current) {
         window.clearInterval(typingTimerRef.current);
         typingTimerRef.current = null;
       }
     };
-  }, []);
+  }, [clearInterviewerAudioResources]);
 
   useEffect(() => {
     if (!attempt || initializedRef.current) {
@@ -227,6 +319,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
       !questionText ||
       !visibleQuestionText ||
       typingInProgress ||
+      interviewerSpeechActive ||
       !foregroundVisible ||
       loadingTurn ||
       loadingAnalysis ||
@@ -255,6 +348,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     questionText,
     visibleQuestionText,
     typingInProgress,
+    interviewerSpeechActive,
     foregroundVisible,
     responseSendActive,
     speechError,
@@ -295,6 +389,19 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
   const organizationName = normalizeOrganizationName(role.organizationDescription);
   const voiceUnavailable = !speechSupported || Boolean(speechError);
+  const questionSizeClass = useMemo(() => {
+    const contentLength = questionText.trim().length || visibleQuestionText.trim().length;
+
+    if (contentLength >= 260) {
+      return "interview-question-text-compact";
+    }
+
+    if (contentLength >= 170) {
+      return "interview-question-text-balanced";
+    }
+
+    return "";
+  }, [questionText, visibleQuestionText]);
 
   const typeQuestion = useCallback(async (question: string) => {
     if (typingTimerRef.current) {
@@ -306,10 +413,16 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     typingRunRef.current = runId;
     setVisibleQuestionText("");
     setTypingInProgress(true);
+    const words = splitQuestionWords(question);
+
+    if (words.length === 0) {
+      setVisibleQuestionText(question.trim());
+      setTypingInProgress(false);
+      return;
+    }
 
     await new Promise<void>((resolve) => {
       let index = 0;
-      const step = typingStepSize(question.length);
 
       typingTimerRef.current = window.setInterval(() => {
         if (typingRunRef.current !== runId) {
@@ -321,17 +434,17 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
           return;
         }
 
-        index = Math.min(question.length, index + step);
-        setVisibleQuestionText(question.slice(0, index));
+        index = Math.min(words.length, index + 1);
+        setVisibleQuestionText(words.slice(0, index).join(" "));
 
-        if (index >= question.length) {
+        if (index >= words.length) {
           if (typingTimerRef.current) {
             window.clearInterval(typingTimerRef.current);
             typingTimerRef.current = null;
           }
           resolve();
         }
-      }, TYPING_INTERVAL_MS);
+      }, TYPING_WORD_INTERVAL_MS);
     });
 
     if (typingRunRef.current === runId) {
@@ -388,7 +501,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
       setQuestionCycle((current) => current + 1);
       setQuestionVisible(true);
       setPhase("active");
-      await typeQuestion(question);
+      await Promise.all([typeQuestion(question), playInterviewerSpeech(question)]);
       setForegroundVisible(true);
 
       logger.info("interview.question.displayed", {
@@ -396,7 +509,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
         questionLength: question.length,
       });
     },
-    [attempt.id, typeQuestion],
+    [attempt.id, playInterviewerSpeech, typeQuestion],
   );
 
   const completeInterview = useCallback(
@@ -417,6 +530,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
         stopSpeech();
       }
 
+      cancelInterviewerSpeech();
       resetAnswerDraft();
       setQuestionText("");
       setVisibleQuestionText("");
@@ -430,12 +544,12 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
         transcriptLength: transcript.length,
       });
 
-      await delay(COMPLETE_DELAY_MS);
+      await delay(COMPLETE_SCENE_MS);
       await runAnalysis(transcript);
 
       router.replace(`/roles/${roleId}/attempts/${attemptId}/conclusion`);
     },
-    [attempt.id, attemptId, resetAnswerDraft, roleId, router, runAnalysis, speechListening, stopSpeech],
+    [attempt.id, attemptId, cancelInterviewerSpeech, resetAnswerDraft, roleId, router, runAnalysis, speechListening, stopSpeech],
   );
 
   const requestNextTurn = useCallback(
@@ -532,6 +646,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
       return;
     }
 
+    cancelInterviewerSpeech();
     setAttemptStatus(attempt.id, "in_progress");
     setForegroundVisible(false);
     setQuestionVisible(false);
@@ -544,6 +659,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
       phase !== "active" ||
       !foregroundVisible ||
       voiceUnavailable ||
+      interviewerSpeechActive ||
       typingInProgress ||
       loadingTurn ||
       loadingAnalysis ||
@@ -574,7 +690,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
   };
 
   const retryVoiceCapture = () => {
-    if (phase !== "active" || !foregroundVisible || typingInProgress || loadingTurn || loadingAnalysis) {
+    if (phase !== "active" || !foregroundVisible || interviewerSpeechActive || typingInProgress || loadingTurn || loadingAnalysis) {
       return;
     }
 
@@ -592,8 +708,23 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
       }
     }
 
+    cancelInterviewerSpeech();
     router.replace(`/roles/${role.id}`);
   };
+
+  const toggleInterviewerVoice = () => {
+    setInterviewerVoiceEnabled((current) => {
+      const next = !current;
+      logger.info("interviewer.tts.toggle", { attemptId: attempt.id, enabled: next });
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!interviewerVoiceEnabled) {
+      cancelInterviewerSpeech();
+    }
+  }, [cancelInterviewerSpeech, interviewerVoiceEnabled]);
 
   const toggleFullscreen = async () => {
     if (typeof document === "undefined") {
@@ -640,9 +771,25 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
   if (phase === "complete") {
     return (
-      <main className="relative left-1/2 -mb-10 -mt-10 min-h-screen w-screen -translate-x-1/2 bg-[#04070d] md:-mb-12 md:-mt-12">
-        <section className="flex min-h-screen items-center justify-center px-6 text-center">
-          <h1 className="text-5xl tracking-tight text-slate-100 md:text-6xl">Interview Complete</h1>
+      <main className="relative left-1/2 -mb-10 -mt-10 min-h-screen w-screen -translate-x-1/2 overflow-hidden bg-[#04070d] text-slate-100 md:-mb-12 md:-mt-12">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="interview-ambience-base" />
+          <div className="interview-ambience-layer interview-ambience-layer-a" />
+          <div className="interview-ambience-layer interview-ambience-layer-b" />
+          <div className="interview-ambience-layer interview-ambience-layer-c" />
+          <div className="interview-shape interview-shape-1" />
+          <div className="interview-shape interview-shape-2" />
+          <div className="interview-shape interview-shape-3" />
+          <div className="interview-shape interview-shape-4" />
+          <div className="interview-shape interview-shape-5" />
+        </div>
+        <section className="relative z-10 flex min-h-screen items-center justify-center px-6 text-center">
+          <h1
+            className="interview-complete-text text-5xl tracking-tight text-slate-100 md:text-6xl"
+            style={{ animationDuration: `${COMPLETE_SCENE_MS}ms` }}
+          >
+            Interview Complete
+          </h1>
         </section>
       </main>
     );
@@ -683,46 +830,87 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
           </svg>
         </button>
 
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-500/70 bg-slate-900/50 text-slate-100 transition hover:border-slate-300"
-          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-        >
-          {isFullscreen ? (
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="h-4 w-4"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M9 15H5v4" />
-              <path d="M15 9h4V5" />
-              <path d="M5 19l5-5" />
-              <path d="M19 5l-5 5" />
-            </svg>
-          ) : (
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="h-4 w-4"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M9 3H3v6" />
-              <path d="M15 21h6v-6" />
-              <path d="M3 9l6-6" />
-              <path d="M21 15l-6 6" />
-            </svg>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleInterviewerVoice}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-500/70 bg-slate-900/50 text-slate-100 transition hover:border-slate-300"
+            aria-label={interviewerVoiceEnabled ? "Mute interviewer voice" : "Unmute interviewer voice"}
+          >
+            {interviewerVoiceEnabled ? (
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-4 w-4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M11 5L6 9H3v6h3l5 4V5z" />
+                <path d="M15.5 9.5a4 4 0 010 5" />
+                <path d="M18.5 7a7.5 7.5 0 010 10" />
+              </svg>
+            ) : (
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-4 w-4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M11 5L6 9H3v6h3l5 4V5z" />
+                <path d="M15 9l6 6" />
+                <path d="M21 9l-6 6" />
+              </svg>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-500/70 bg-slate-900/50 text-slate-100 transition hover:border-slate-300"
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {isFullscreen ? (
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-4 w-4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 15H5v4" />
+                <path d="M15 9h4V5" />
+                <path d="M5 19l5-5" />
+                <path d="M19 5l-5 5" />
+              </svg>
+            ) : (
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-4 w-4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 3H3v6" />
+                <path d="M15 21h6v-6" />
+                <path d="M3 9l6-6" />
+                <path d="M21 15l-6 6" />
+              </svg>
+            )}
+          </button>
+        </div>
       </header>
 
       <section className="relative z-10 flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center px-6 pb-14 pt-2 md:px-10">
@@ -731,17 +919,24 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
             questionVisible ? "opacity-100 duration-[2500ms]" : "opacity-0 duration-300"
           } transition-opacity ease-in-out`}
         >
-          <div className="interview-question-text min-h-[3.6em] text-center">{visibleQuestionText}</div>
+          <div className={`interview-question-text min-h-[3.6em] text-center ${questionSizeClass}`}>{visibleQuestionText}</div>
         </div>
 
         {foregroundVisible ? (
           <div className="interview-support-enter relative flex w-full flex-col items-center">
-            <AudioReactiveBlob className="mt-12" level={audioLevel} listening={speechListening} />
+            <AudioReactiveBlob className="mt-20 md:mt-24" level={audioLevel} listening={speechListening} />
 
             <Button
               className="mt-7 min-w-48 border-slate-500/45 bg-slate-900/45 text-slate-100 opacity-50 backdrop-blur-sm hover:border-slate-300/70 hover:bg-slate-800/55"
               onClick={finishResponse}
-              disabled={voiceUnavailable || typingInProgress || loadingTurn || loadingAnalysis || responseSendActive}
+              disabled={
+                voiceUnavailable ||
+                interviewerSpeechActive ||
+                typingInProgress ||
+                loadingTurn ||
+                loadingAnalysis ||
+                responseSendActive
+              }
             >
               {typingInProgress
                 ? "Question typing..."
@@ -771,7 +966,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
                         variant="ghost"
                         className="border-slate-500/45 bg-slate-900/30 text-slate-100 hover:border-slate-300"
                         onClick={retryVoiceCapture}
-                        disabled={typingInProgress || loadingTurn || loadingAnalysis}
+                        disabled={interviewerSpeechActive || typingInProgress || loadingTurn || loadingAnalysis}
                       >
                         Retry microphone access
                       </Button>

@@ -152,3 +152,31 @@ export async function requestResumeSummary(resumeText: string): Promise<ResumeSu
 
   return payload;
 }
+
+/**
+ * Calls the server route that generates interviewer TTS audio for a single question.
+ */
+export async function requestInterviewerSpeech(input: { text: string }): Promise<Blob> {
+  logger.info("interviewer.tts.request.started", { textLength: input.text.length });
+
+  const response = await fetch("/api/ai/tts", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const message = await readErrorMessage(response);
+    logger.warn("interviewer.tts.request.failed", { message });
+    throw new Error(message);
+  }
+
+  const payload = await response.blob();
+  logger.info("interviewer.tts.request.completed", {
+    byteLength: payload.size,
+  });
+
+  return payload;
+}
