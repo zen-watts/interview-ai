@@ -9,6 +9,7 @@ import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { Modal } from "@/src/components/ui/modal";
 import type { RoleProfile } from "@/src/lib/types";
+import { cn } from "@/src/lib/utils/cn";
 import { formatDateTime } from "@/src/lib/utils/time";
 
 function sortByUpdatedAt(a: RoleProfile, b: RoleProfile) {
@@ -16,7 +17,7 @@ function sortByUpdatedAt(a: RoleProfile, b: RoleProfile) {
 }
 
 export function HomePage() {
-  const { store, createRole, toggleRoleFavorite } = useAppStore();
+  const { store, createRole, toggleRoleFavorite, newlyCreatedRoleId } = useAppStore();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const pinnedRoles = useMemo(() => {
@@ -34,7 +35,10 @@ export function HomePage() {
 
     return (
       <Link href={`/roles/${role.id}`}>
-        <Card className="relative h-full space-y-4 transition hover:border-paper-accent">
+        <Card className={cn(
+          "relative h-full space-y-4 transition hover:border-paper-accent",
+          role.id === newlyCreatedRoleId && "card-glow-border"
+        )}>
           <button
             type="button"
             aria-label={role.isFavorited ? "Unpin role" : "Pin role"}
