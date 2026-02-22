@@ -88,16 +88,17 @@ export function HomePage() {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <h1 className="text-4xl leading-tight md:text-5xl">Role Dashboard</h1>
-          <p className="max-w-2xl text-paper-softInk">
-            Pick a role to practice, edit its context, or create a new one.
-          </p>
         </div>
 
         <Link
           href="/profile"
-          className="font-sans text-xs uppercase tracking-[0.14em] text-paper-muted hover:text-paper-ink"
+          className={cn(
+            "inline-flex items-center justify-center rounded-paper border px-3 py-2 text-sm font-medium transition",
+            "border-paper-border bg-transparent text-paper-softInk hover:border-paper-accent hover:text-paper-ink",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paper-accent/30",
+          )}
         >
-          Profile
+          Edit Profile
         </Link>
       </header>
 
