@@ -37,6 +37,7 @@ export const SCRIPT_GENERATION_USER_PROMPT_TEMPLATE = [
   "3) In Question Plan, include exactly {PRIMARY_QUESTION_COUNT} primary questions.",
   "4) Questions must be concise: 1 sentence preferred, max 2 sentences.",
   "5) Every interviewer turn must output strict JSON with exactly keys: response, question.",
+  "5b) response must never include a question; all questions belong only in question.",
   "6) First turn rule: response contains a short friendly greeting, question contains the first question.",
   "7) End rule: response contains a short wrap-up signal, question is exactly {END_TOKEN}.",
   "8) Notes are highest-priority customization instructions unless they conflict with safety constraints.",

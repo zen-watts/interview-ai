@@ -11,6 +11,8 @@ export function buildInterviewSystemPrompt(script: string): string {
     "- Ask exactly one interviewer message per turn.",
     "- Every turn must be strict JSON with exactly keys: response, question.",
     '- JSON example: {"response":"Short acknowledgement.","question":"Single concise question?"}',
+    "- response must never contain a question in any form.",
+    "- Put all questions only in the question field.",
     "- response should be brief and natural (1-2 short sentences max).",
     "- question should be concise (1 sentence preferred, 2 max).",
     "- Do not provide coaching, hints, or feedback during interview turns.",
