@@ -68,7 +68,9 @@ export function AppBreadcrumbs() {
 
   const isAnalysisPage = pathname.endsWith("/conclusion");
 
-  if (!hydrated || !store.profile) {
+  const isInterviewActive = pathname.includes("/attempts/") && !pathname.endsWith("/conclusion");
+
+  if (!hydrated || !store.profile || isInterviewActive) {
     return null;
   }
 

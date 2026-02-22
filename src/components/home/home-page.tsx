@@ -95,7 +95,7 @@ export function HomePage() {
 
         <Link
           href="/profile"
-          className="font-sans text-xs uppercase tracking-[0.14em] text-paper-muted hover:text-paper-ink"
+          className="self-start -mt-4 font-sans text-xs uppercase tracking-[0.16em] text-paper-softInk hover:text-paper-ink"
         >
           Profile
         </Link>
