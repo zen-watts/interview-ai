@@ -39,14 +39,15 @@ All data is persisted in browser `localStorage` using a typed schema and migrati
 
 ### User flow
 
-1. User opens a role and creates an interview attempt.
+1. User opens a role and creates a practice session.
 2. User configures interview knobs (persona, follow-up intensity, length, category, notes).
 3. App immediately generates and stores an interviewer script.
-4. User starts interview.
-5. Interview runs one question at a time.
-6. User answers by speech-to-text and/or manual text entry.
-7. Transcript is appended per turn and persisted continuously.
-8. Interview ends when assistant returns the strict end token.
+4. User sees a pre-interview overlay with role + organization context and a single `Begin` action.
+5. Interview enters a dark, low-noise mode with only: current question, per-question timer, audio-reactive blob, and finish controls.
+6. As each question appears, text animates in and optional interviewer TTS can play in parallel.
+7. User responds; each turn submission fades out the current question/timer, then fades in the next question with timer reset to `00:00`.
+8. Transcript is appended per turn and persisted continuously.
+9. Interview ends when assistant returns the strict end token, then UI collapses to `Interview Complete`.
 
 ### System behavior
 
@@ -68,8 +69,13 @@ Two-stage AI pipeline:
 
 1. Interview reaches end token.
 2. Analysis generation starts automatically.
-3. User receives structured post-interview report.
-4. Report remains accessible in the saved attempt.
+3. Theme returns to the default app style and user receives a four-block post-interview report:
+   - high-level impression
+   - blunt paragraph analysis
+   - specific red flags
+   - single highest-priority improvement step
+4. Transcript (and interviewer script in dev mode) can be expanded from toggles at the bottom.
+5. Report remains accessible in the saved attempt.
 
 ### Analysis output contract
 
@@ -97,6 +103,7 @@ No scores or ratings are used.
 - `POST /api/ai/resume`: resume summarization/autofill hints
 - `POST /api/ai/script`: interviewer script generation
 - `POST /api/ai/interview`: next-turn generation
+- `POST /api/ai/tts`: interviewer text-to-speech generation
 - `POST /api/ai/analysis`: post-interview analysis generation
 
 All API routes validate inputs, catch failures, and return clear error payloads.
@@ -104,7 +111,8 @@ All API routes validate inputs, catch failures, and return clear error payloads.
 ## Reliability and Fallbacks
 
 - Missing API key: app still renders and local workflows remain usable.
-- Unsupported speech recognition: user can type answers manually.
+- Missing ElevenLabs TTS configuration: interview continues with typed question display and no interviewer audio playback.
+- Unsupported speech recognition: voice capture is unavailable and the UI provides a retry/error path.
 - Resume parse failure: onboarding still continues with manual entry.
 - Model output validation failures are surfaced with actionable messages.
 
@@ -115,4 +123,3 @@ The product should feel calm and focused:
 - low visual noise
 - clear one-step interactions
 - practical feedback that improves next interview behavior
-

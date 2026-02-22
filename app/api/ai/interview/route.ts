@@ -80,9 +80,7 @@ export async function POST(request: Request) {
     const responseText = parsedTurn.response.trim();
     const questionText = parsedTurn.question.trim();
     const isEnd = questionText === END_TOKEN;
-    const message = isEnd
-      ? responseText
-      : [`Response: ${responseText}`, `Question: ${questionText}`].join("\n");
+    const message = isEnd ? responseText : [responseText, questionText].filter(Boolean).join("\n\n");
 
     logger.info("Interview turn generated successfully.", {
       responseId: response.id,

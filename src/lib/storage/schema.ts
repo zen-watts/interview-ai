@@ -20,8 +20,8 @@ const profileSchema = z.object({
   name: z.string().min(1),
   targetJob: z.string().min(1),
   experienceLevel: z.enum(experienceLevelValues),
-  age: z.number().int().min(1).max(120).nullable().optional(),
-  pronouns: z.string().optional(),
+  age: z.number().int().min(1).max(120).nullable().default(null),
+  pronouns: z.string().default(""),
   resumeText: z.string(),
   resumeSummary: z.string(),
   createdAt: z.string(),
@@ -102,7 +102,9 @@ const appStoreV2Schema = z.object({
   profile: profileSchema.nullable(),
   roles: z.array(roleSchema),
   attempts: z.array(attemptSchema),
-  devSettings: devSettingsSchema.optional(),
+  devSettings: devSettingsSchema.default({
+    showInterviewerScriptOnConclusion: false,
+  }),
 });
 
 export const appStoreSchema = appStoreV2Schema;
@@ -134,17 +136,15 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
         profile: parsed.data.profile
           ? {
               ...parsed.data.profile,
-              age: parsed.data.profile.age ?? null,
-              pronouns: parsed.data.profile.pronouns ?? "",
+              age: parsed.data.profile.age,
+              pronouns: parsed.data.profile.pronouns,
             }
           : null,
         roles: parsed.data.roles.map((role) => ({
           ...role,
           isFavorited: role.isFavorited ?? false,
         })),
-        devSettings: {
-          showInterviewerScriptOnConclusion: parsed.data.devSettings?.showInterviewerScriptOnConclusion ?? false,
-        },
+        devSettings: parsed.data.devSettings,
       };
     }
     return createEmptyStore();

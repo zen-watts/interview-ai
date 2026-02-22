@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { AudioReactiveBlob } from "@/src/components/interview/audio-reactive-blob";
+import { useAudioLevel } from "@/src/components/interview/use-audio-level";
 import { useSpeechRecognition } from "@/src/components/interview/use-speech-recognition";
 import { useAppStore } from "@/src/components/providers/app-store-provider";
 import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { Notice } from "@/src/components/ui/notice";
-import { Textarea } from "@/src/components/ui/textarea";
-import { requestInterviewAnalysis, requestInterviewTurn } from "@/src/lib/ai/client-api";
+import { requestInterviewAnalysis, requestInterviewTurn, requestInterviewerSpeech } from "@/src/lib/ai/client-api";
 import { createLogger } from "@/src/lib/logger";
 import { END_TOKEN, type TranscriptTurn } from "@/src/lib/types";
 import { createId } from "@/src/lib/utils/id";
@@ -18,56 +19,131 @@ import { formatDuration, nowIso } from "@/src/lib/utils/time";
 
 const logger = createLogger("interview-attempt-page");
 
-const statusCopy: Record<string, string> = {
-  script_pending: "Generating script",
-  ready: "Ready to start",
-  in_progress: "In progress",
-  analysis_pending: "Generating analysis",
-  complete: "Complete",
-  error: "Needs attention",
-};
+const QUESTION_FADE_MS = 420;
+const TYPING_WORD_INTERVAL_MS = 110;
+const RESPONSE_SEND_ANIMATION_MS = 950;
+const COMPLETE_FADE_IN_MS = 350;
+const COMPLETE_HOLD_MS = 1000;
+const COMPLETE_FADE_OUT_MS = 350;
+const COMPLETE_SCENE_MS = COMPLETE_FADE_IN_MS + COMPLETE_HOLD_MS + COMPLETE_FADE_OUT_MS;
+const EMPTY_RESPONSE_ERROR = "Please respond before finishing this turn.";
+
+type InterviewVisualPhase = "intro" | "transition" | "active" | "complete";
+
+function splitAssistantTurnContent(content: string) {
+  const raw = content.trim();
+  if (!raw) {
+    return { response: "", question: "" };
+  }
+
+  const lines = raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const responseLine = lines.find((line) => /^response:/i.test(line));
+  const questionLine = lines.find((line) => /^question:/i.test(line));
+
+  if (questionLine) {
+    return {
+      response: responseLine ? responseLine.replace(/^response:\s*/i, "").trim() : "",
+      question: questionLine.replace(/^question:\s*/i, "").trim(),
+    };
+  }
+
+  const paragraphs = raw
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (paragraphs.length >= 2) {
+    return {
+      response: paragraphs.slice(0, -1).join("\n\n"),
+      question: paragraphs[paragraphs.length - 1],
+    };
+  }
+
+  return { response: "", question: raw };
+}
 
 function findLatestAssistantQuestion(transcript: TranscriptTurn[]) {
   for (let index = transcript.length - 1; index >= 0; index -= 1) {
     const turn = transcript[index];
     if (turn.role === "assistant") {
-      const lines = turn.content.split("\n").map((line) => line.trim());
-      const labeledQuestion = lines.find((line) => line.toLowerCase().startsWith("question:"));
-      if (labeledQuestion) {
-        return labeledQuestion.slice("question:".length).trim();
-      }
-
-      return turn.content;
+      const parsed = splitAssistantTurnContent(turn.content);
+      return parsed.question || turn.content;
     }
   }
 
   return "";
 }
 
-function streamStepSize(contentLength: number) {
-  if (contentLength <= 60) {
-    return 1;
+function findLatestAssistantResponse(transcript: TranscriptTurn[]) {
+  for (let index = transcript.length - 1; index >= 0; index -= 1) {
+    const turn = transcript[index];
+    if (turn.role === "assistant") {
+      const parsed = splitAssistantTurnContent(turn.content);
+      return parsed.response;
+    }
   }
 
-  if (contentLength <= 140) {
-    return 2;
+  return "";
+}
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function normalizeOrganizationName(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "this organization";
   }
 
-  return 3;
+  if (trimmed.length <= 72) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, 69).trim()}...`;
+}
+
+function splitQuestionWords(question: string) {
+  return question.trim().split(/\s+/).filter(Boolean);
 }
 
 export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; attemptId: string }) {
   const { store, replaceTranscript, appendTranscriptTurn, setAttemptStatus, setAttemptAnalysis } = useAppStore();
   const router = useRouter();
 
-  const [draftAnswer, setDraftAnswer] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loadingTurn, setLoadingTurn] = useState(false);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [streamingQuestion, setStreamingQuestion] = useState("");
-  const [streamingInProgress, setStreamingInProgress] = useState(false);
+  const [phase, setPhase] = useState<InterviewVisualPhase>("intro");
+  const [responseText, setResponseText] = useState("");
+  const [questionText, setQuestionText] = useState("");
+  const [visibleQuestionText, setVisibleQuestionText] = useState("");
+  const [questionVisible, setQuestionVisible] = useState(false);
+  const [typingInProgress, setTypingInProgress] = useState(false);
+  const [foregroundVisible, setForegroundVisible] = useState(false);
+  const [questionElapsedSec, setQuestionElapsedSec] = useState(0);
+  const [questionCycle, setQuestionCycle] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [responseSendText, setResponseSendText] = useState("");
+  const [responseSendActive, setResponseSendActive] = useState(false);
+  const [responseSendKey, setResponseSendKey] = useState(0);
+  const [errorFading, setErrorFading] = useState(false);
+  const [interviewerVoiceEnabled, setInterviewerVoiceEnabled] = useState(true);
+  const [interviewerSpeechActive, setInterviewerSpeechActive] = useState(false);
+
   const spokenAnswerRef = useRef("");
-  const streamTimerRef = useRef<number | null>(null);
+  const initializedRef = useRef(false);
+  const completionStartedRef = useRef(false);
+  const typingRunRef = useRef(0);
+  const typingTimerRef = useRef<number | null>(null);
+  const interviewerSpeechRunRef = useRef(0);
+  const interviewerAudioRef = useRef<HTMLAudioElement | null>(null);
+  const interviewerAudioUrlRef = useRef<string | null>(null);
 
   const role = useMemo(() => store.roles.find((item) => item.id === roleId) ?? null, [roleId, store.roles]);
   const attempt = useMemo(
@@ -75,38 +151,291 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     [attemptId, roleId, store.attempts],
   );
 
-  const handleFinalTranscript = useCallback((text: string) => {
+  const onFinalTranscript = useCallback((text: string) => {
     const next = [spokenAnswerRef.current, text].filter(Boolean).join(" ").trim();
     spokenAnswerRef.current = next;
-    setDraftAnswer(next);
   }, []);
 
-  const speech = useSpeechRecognition(handleFinalTranscript);
+  const speech = useSpeechRecognition(onFinalTranscript);
+  const {
+    supported: speechSupported,
+    listening: speechListening,
+    interimText,
+    lastError: speechError,
+    start: startSpeech,
+    stop: stopSpeech,
+    reset: resetSpeech,
+  } = speech;
+  const audioLevel = useAudioLevel(phase === "active" && speechSupported && !speechError);
+
+  const resetAnswerDraft = useCallback(() => {
+    spokenAnswerRef.current = "";
+    resetSpeech();
+  }, [resetSpeech]);
+
+  const clearInterviewerAudioResources = useCallback(() => {
+    if (interviewerAudioRef.current) {
+      interviewerAudioRef.current.pause();
+      interviewerAudioRef.current.onended = null;
+      interviewerAudioRef.current.onerror = null;
+      interviewerAudioRef.current.src = "";
+      interviewerAudioRef.current = null;
+    }
+
+    if (interviewerAudioUrlRef.current) {
+      URL.revokeObjectURL(interviewerAudioUrlRef.current);
+      interviewerAudioUrlRef.current = null;
+    }
+  }, []);
+
+  const cancelInterviewerSpeech = useCallback(() => {
+    interviewerSpeechRunRef.current += 1;
+    clearInterviewerAudioResources();
+    setInterviewerSpeechActive(false);
+  }, [clearInterviewerAudioResources]);
+
+  const playInterviewerSpeech = useCallback(
+    async (question: string) => {
+      if (!interviewerVoiceEnabled || !question.trim()) {
+        return;
+      }
+
+      const runId = interviewerSpeechRunRef.current + 1;
+      interviewerSpeechRunRef.current = runId;
+      clearInterviewerAudioResources();
+      setInterviewerSpeechActive(true);
+
+      logger.info("interviewer.tts.request.started", {
+        attemptId,
+        questionLength: question.length,
+      });
+
+      try {
+        const audioBlob = await requestInterviewerSpeech({ text: question });
+        if (interviewerSpeechRunRef.current !== runId) {
+          return;
+        }
+
+        const objectUrl = URL.createObjectURL(audioBlob);
+        interviewerAudioUrlRef.current = objectUrl;
+
+        const audio = new Audio(objectUrl);
+        audio.preload = "auto";
+        interviewerAudioRef.current = audio;
+
+        await new Promise<void>((resolve, reject) => {
+          audio.onended = () => {
+            resolve();
+          };
+
+          audio.onerror = () => {
+            reject(new Error("Interviewer voice playback failed."));
+          };
+
+          const playPromise = audio.play();
+          if (playPromise) {
+            playPromise.catch((playError) => {
+              reject(playError instanceof Error ? playError : new Error("Interviewer voice playback failed."));
+            });
+          }
+        });
+
+        logger.info("interviewer.tts.playback.completed", {
+          attemptId,
+          questionLength: question.length,
+        });
+      } catch (ttsError) {
+        if (interviewerSpeechRunRef.current === runId) {
+          const message = ttsError instanceof Error ? ttsError.message : "Interviewer speech unavailable.";
+          logger.warn("interviewer.tts.playback.failed", {
+            attemptId,
+            message,
+          });
+        }
+      } finally {
+        if (interviewerSpeechRunRef.current === runId) {
+          clearInterviewerAudioResources();
+          setInterviewerSpeechActive(false);
+        }
+      }
+    },
+    [attemptId, clearInterviewerAudioResources, interviewerVoiceEnabled],
+  );
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const shouldUseDarkMode = phase !== "intro";
+    document.body.classList.toggle("interview-dark-mode", shouldUseDarkMode);
+
+    return () => {
+      document.body.classList.remove("interview-dark-mode");
+    };
+  }, [phase]);
+
+  useEffect(() => {
+    if (error !== EMPTY_RESPONSE_ERROR) {
+      setErrorFading(false);
+      return;
+    }
+
+    const fadeTimer = window.setTimeout(() => {
+      setErrorFading(true);
+    }, 1000);
+
+    const clearTimer = window.setTimeout(() => {
+      setError(null);
+      setErrorFading(false);
+    }, 1320);
+
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [error]);
 
   useEffect(() => {
     return () => {
-      if (streamTimerRef.current) {
-        window.clearInterval(streamTimerRef.current);
+      interviewerSpeechRunRef.current += 1;
+      clearInterviewerAudioResources();
+
+      if (typingTimerRef.current) {
+        window.clearInterval(typingTimerRef.current);
+        typingTimerRef.current = null;
       }
     };
-  }, []);
+  }, [clearInterviewerAudioResources]);
+
+  useEffect(() => {
+    if (!attempt || initializedRef.current) {
+      return;
+    }
+
+    const latestStoredQuestion = findLatestAssistantQuestion(attempt.transcript);
+    const latestStoredResponse = findLatestAssistantResponse(attempt.transcript);
+
+    if (latestStoredQuestion) {
+      setResponseText(latestStoredResponse);
+      setQuestionText(latestStoredQuestion);
+      setVisibleQuestionText(latestStoredQuestion);
+      setTypingInProgress(false);
+      setQuestionVisible(true);
+      setForegroundVisible(true);
+      setQuestionCycle((current) => current + 1);
+      setPhase("active");
+      logger.info("interview.question.restored", {
+        attemptId: attempt.id,
+        transcriptLength: attempt.transcript.length,
+      });
+    }
+
+    initializedRef.current = true;
+  }, [attempt]);
 
   useEffect(() => {
     if (!attempt) {
       return;
     }
 
-    if (attempt.status === "analysis_pending" || attempt.status === "complete") {
+    if ((attempt.status === "analysis_pending" || attempt.status === "complete") && !completionStartedRef.current) {
       router.replace(`/roles/${roleId}/attempts/${attemptId}/conclusion`);
     }
   }, [attempt, attemptId, roleId, router]);
+
+  useEffect(() => {
+    if (phase !== "active" || !foregroundVisible || !questionText || typingInProgress || !visibleQuestionText) {
+      return;
+    }
+
+    const startedAt = Date.now();
+    setQuestionElapsedSec(0);
+
+    const timerId = window.setInterval(() => {
+      setQuestionElapsedSec(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [phase, foregroundVisible, questionCycle, questionText, typingInProgress, visibleQuestionText]);
+
+  useEffect(() => {
+    if (phase !== "active") {
+      return;
+    }
+
+    if (
+      !questionText ||
+      !visibleQuestionText ||
+      typingInProgress ||
+      interviewerSpeechActive ||
+      !foregroundVisible ||
+      loadingTurn ||
+      loadingAnalysis ||
+      responseSendActive ||
+      !speechSupported ||
+      speechError ||
+      speechListening
+    ) {
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
+      startSpeech();
+      logger.info("interview.capture.started", { attemptId });
+    }, 160);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [
+    attemptId,
+    loadingAnalysis,
+    loadingTurn,
+    phase,
+    questionCycle,
+    questionText,
+    visibleQuestionText,
+    typingInProgress,
+    interviewerSpeechActive,
+    foregroundVisible,
+    responseSendActive,
+    speechError,
+    speechListening,
+    speechSupported,
+    startSpeech,
+  ]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const onFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!interviewerVoiceEnabled) {
+      cancelInterviewerSpeech();
+    }
+  }, [cancelInterviewerSpeech, interviewerVoiceEnabled]);
 
   if (!role || !attempt) {
     return (
       <main className="space-y-6">
         <Card className="space-y-3">
           <h1 className="text-3xl">Interview attempt not found</h1>
-          <p className="text-paper-softInk">This interview attempt does not exist in local storage.</p>
+          <p className="text-paper-softInk">This practice session does not exist in local storage.</p>
           <Link href="/">
             <Button>Back to home</Button>
           </Link>
@@ -115,8 +444,64 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     );
   }
 
-  const latestStoredQuestion = findLatestAssistantQuestion(attempt.transcript);
-  const latestQuestion = streamingInProgress ? streamingQuestion : latestStoredQuestion;
+  const organizationName = normalizeOrganizationName(role.organizationDescription);
+  const voiceUnavailable = !speechSupported || Boolean(speechError);
+  const questionContentLength = questionText.trim().length || visibleQuestionText.trim().length;
+  const questionSizeClass =
+    questionContentLength >= 260
+      ? "interview-question-text-compact"
+      : questionContentLength >= 170
+        ? "interview-question-text-balanced"
+        : "";
+
+  const typeQuestion = async (question: string) => {
+    if (typingTimerRef.current) {
+      window.clearInterval(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+
+    const runId = typingRunRef.current + 1;
+    typingRunRef.current = runId;
+    setVisibleQuestionText("");
+    setTypingInProgress(true);
+    const words = splitQuestionWords(question);
+
+    if (words.length === 0) {
+      setVisibleQuestionText(question.trim());
+      setTypingInProgress(false);
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      let index = 0;
+
+      typingTimerRef.current = window.setInterval(() => {
+        if (typingRunRef.current !== runId) {
+          if (typingTimerRef.current) {
+            window.clearInterval(typingTimerRef.current);
+            typingTimerRef.current = null;
+          }
+          resolve();
+          return;
+        }
+
+        index = Math.min(words.length, index + 1);
+        setVisibleQuestionText(words.slice(0, index).join(" "));
+
+        if (index >= words.length) {
+          if (typingTimerRef.current) {
+            window.clearInterval(typingTimerRef.current);
+            typingTimerRef.current = null;
+          }
+          resolve();
+        }
+      }, TYPING_WORD_INTERVAL_MS);
+    });
+
+    if (typingRunRef.current === runId) {
+      setTypingInProgress(false);
+    }
+  };
 
   const runAnalysis = async (transcript: TranscriptTurn[]) => {
     if (!attempt.script) {
@@ -128,49 +513,91 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     setAttemptStatus(attempt.id, "analysis_pending");
 
     try {
+      logger.info("analysis.request.started", {
+        attemptId: attempt.id,
+        transcriptLength: transcript.length,
+      });
+
       const analysis = await requestInterviewAnalysis({
         script: attempt.script,
         transcript,
       });
 
       setAttemptAnalysis(attempt.id, analysis);
+      logger.info("analysis.request.completed", {
+        attemptId: attempt.id,
+        redFlagCount: analysis.red_flags.length,
+      });
     } catch (analysisError) {
       const message = analysisError instanceof Error ? analysisError.message : "Analysis failed.";
       setAttemptStatus(attempt.id, "analysis_pending", message);
       setError(message);
-      logger.error("Interview analysis failed.", { message, attemptId: attempt.id });
+      logger.error("analysis.request.failed", { message, attemptId: attempt.id });
     } finally {
       setLoadingAnalysis(false);
     }
   };
 
-  const streamAssistantMessage = async (message: string) => {
-    if (streamTimerRef.current) {
-      window.clearInterval(streamTimerRef.current);
-      streamTimerRef.current = null;
+  const showNextQuestion = async (response: string, question: string) => {
+    setForegroundVisible(false);
+    setQuestionVisible(false);
+    setPhase("transition");
+
+    await delay(QUESTION_FADE_MS);
+
+    setResponseText(response.trim());
+    setQuestionText(question);
+    setVisibleQuestionText("");
+    setQuestionElapsedSec(0);
+    setQuestionCycle((current) => current + 1);
+    setQuestionVisible(true);
+    setPhase("active");
+    await Promise.all([typeQuestion(question), playInterviewerSpeech(question)]);
+    setForegroundVisible(true);
+
+    logger.info("interview.question.displayed", {
+      attemptId: attempt.id,
+      responseLength: response.length,
+      questionLength: question.length,
+    });
+  };
+
+  const completeInterview = async (transcript: TranscriptTurn[]) => {
+    if (completionStartedRef.current) {
+      return;
     }
 
-    setStreamingQuestion("");
-    setStreamingInProgress(true);
+    completionStartedRef.current = true;
+    typingRunRef.current += 1;
 
-    await new Promise<void>((resolve) => {
-      let index = 0;
-      const chunkSize = streamStepSize(message.length);
-      streamTimerRef.current = window.setInterval(() => {
-        index = Math.min(index + chunkSize, message.length);
-        setStreamingQuestion(message.slice(0, index));
+    if (typingTimerRef.current) {
+      window.clearInterval(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
 
-        if (index >= message.length) {
-          if (streamTimerRef.current) {
-            window.clearInterval(streamTimerRef.current);
-            streamTimerRef.current = null;
-          }
+    if (speechListening) {
+      stopSpeech();
+    }
 
-          setStreamingInProgress(false);
-          resolve();
-        }
-      }, 18);
+    cancelInterviewerSpeech();
+    resetAnswerDraft();
+    setResponseText("");
+    setQuestionText("");
+    setVisibleQuestionText("");
+    setTypingInProgress(false);
+    setForegroundVisible(false);
+    setQuestionVisible(false);
+    setPhase("complete");
+
+    logger.info("interview.completed", {
+      attemptId: attempt.id,
+      transcriptLength: transcript.length,
     });
+
+    await delay(COMPLETE_SCENE_MS);
+    await runAnalysis(transcript);
+
+    router.replace(`/roles/${roleId}/attempts/${attemptId}/conclusion`);
   };
 
   const requestNextTurn = async (transcript: TranscriptTurn[]) => {
@@ -183,34 +610,39 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     setError(null);
 
     try {
+      logger.info("interview.turn.request.started", {
+        attemptId: attempt.id,
+        transcriptLength: transcript.length,
+      });
+
       const next = await requestInterviewTurn({
         script: attempt.script,
         transcript,
         primaryQuestionCount: attempt.config.primaryQuestionCount,
       });
 
-      if (next.isEnd || next.question.trim() === END_TOKEN) {
-        let transcriptForAnalysis = transcript;
+      const response = next.response.trim();
+      const question = next.question.trim();
 
-        if (next.response.trim()) {
+      if (next.isEnd || question === END_TOKEN) {
+        let transcriptForCompletion = transcript;
+
+        if (response) {
           const endAssistantTurn: TranscriptTurn = {
             id: createId(),
             role: "assistant",
-            content: `Response: ${next.response.trim()}`,
+            content: response,
             createdAt: nowIso(),
           };
           appendTranscriptTurn(attempt.id, endAssistantTurn);
-          transcriptForAnalysis = [...transcript, endAssistantTurn];
+          transcriptForCompletion = [...transcript, endAssistantTurn];
         }
 
-        setAttemptStatus(attempt.id, "analysis_pending");
-        await runAnalysis(transcriptForAnalysis);
+        await completeInterview(transcriptForCompletion);
         return;
       }
 
-      const nextQuestion = next.question.trim();
-      const nextMessage = next.message.trim();
-      await streamAssistantMessage(nextQuestion);
+      const nextMessage = [response, question].filter(Boolean).join("\n\n").trim();
 
       const assistantTurn: TranscriptTurn = {
         id: createId(),
@@ -221,27 +653,25 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
       appendTranscriptTurn(attempt.id, assistantTurn);
       setAttemptStatus(attempt.id, "in_progress");
+      await showNextQuestion(response, question);
+
+      logger.info("interview.turn.request.completed", {
+        attemptId: attempt.id,
+      });
     } catch (turnError) {
       const message = turnError instanceof Error ? turnError.message : "Failed to generate next question.";
       setAttemptStatus(attempt.id, "error", message);
       setError(message);
-      logger.error("Fetching the next interviewer turn failed.", { message, attemptId: attempt.id });
+      logger.error("interview.turn.request.failed", { message, attemptId: attempt.id });
     } finally {
       setLoadingTurn(false);
     }
   };
 
-  const resetSpokenDraft = () => {
-    spokenAnswerRef.current = "";
-    setDraftAnswer("");
-    speech.reset();
-  };
-
   const submitAnswer = async (answer: string, answerDurationSec?: number) => {
     const combinedAnswer = answer.trim();
-
     if (!combinedAnswer) {
-      setError("Please say or type your answer before submitting.");
+      setError(EMPTY_RESPONSE_ERROR);
       return;
     }
 
@@ -256,7 +686,12 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     const nextTranscript = [...attempt.transcript, userTurn];
     replaceTranscript(attempt.id, nextTranscript);
 
-    resetSpokenDraft();
+    resetAnswerDraft();
+    setTypingInProgress(false);
+    setForegroundVisible(false);
+    setQuestionVisible(false);
+    setPhase("transition");
+
     await requestNextTurn(nextTranscript);
   };
 
@@ -270,133 +705,366 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
       return;
     }
 
+    cancelInterviewerSpeech();
+    setResponseText("");
     setAttemptStatus(attempt.id, "in_progress");
+    setForegroundVisible(false);
+    setQuestionVisible(false);
+    setPhase("transition");
     await requestNextTurn([]);
   };
 
-  const stopAndSendSpokenAnswer = async () => {
-    const interimSnapshot = speech.interimText.trim();
-    const durationSeconds = speech.listening ? speech.stop() : 0;
+  const finishResponse = async () => {
+    if (
+      phase !== "active" ||
+      !foregroundVisible ||
+      voiceUnavailable ||
+      interviewerSpeechActive ||
+      typingInProgress ||
+      loadingTurn ||
+      loadingAnalysis ||
+      responseSendActive
+    ) {
+      return;
+    }
+
+    setResponseSendActive(true);
+    const interimSnapshot = interimText.trim();
+    const durationSeconds = speechListening ? stopSpeech() : 0;
     const combinedAnswer = [spokenAnswerRef.current.trim(), interimSnapshot].filter(Boolean).join(" ").trim();
-    await submitAnswer(combinedAnswer, durationSeconds);
+    if (!combinedAnswer) {
+      setResponseSendActive(false);
+      setError(EMPTY_RESPONSE_ERROR);
+      return;
+    }
+
+    setResponseSendText(combinedAnswer);
+    setResponseSendKey((current) => current + 1);
+    await delay(RESPONSE_SEND_ANIMATION_MS);
+    setResponseSendText("");
+    try {
+      await submitAnswer(combinedAnswer, durationSeconds);
+    } finally {
+      setResponseSendActive(false);
+    }
   };
 
+  const retryVoiceCapture = () => {
+    if (phase !== "active" || !foregroundVisible || interviewerSpeechActive || typingInProgress || loadingTurn || loadingAnalysis) {
+      return;
+    }
+
+    setError(null);
+    resetSpeech();
+    startSpeech();
+    logger.info("interview.capture.retry", { attemptId: attempt.id });
+  };
+
+  const leaveInterview = () => {
+    if (attempt.transcript.length > 0 && !completionStartedRef.current) {
+      const confirmed = window.confirm("Leave this interview session? Progress is saved and you can return later.");
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    cancelInterviewerSpeech();
+    router.replace(`/roles/${role.id}`);
+  };
+
+  const toggleInterviewerVoice = () => {
+    setInterviewerVoiceEnabled((current) => {
+      const next = !current;
+      logger.info("interviewer.tts.toggle", { attemptId: attempt.id, enabled: next });
+      return next;
+    });
+  };
+
+  const toggleFullscreen = async () => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (fullscreenError) {
+      const message = fullscreenError instanceof Error ? fullscreenError.message : "Fullscreen is unavailable.";
+      setError("Fullscreen is unavailable in this browser.");
+      logger.warn("interview.fullscreen.failed", { message, attemptId: attempt.id });
+    }
+  };
+
+  if (phase === "intro") {
+    return (
+      <main className="space-y-8 pb-12">
+        <section className="flex min-h-[70vh] items-center justify-center">
+          <div className="max-w-4xl space-y-8 text-center">
+            <h1 className="text-balance text-4xl leading-tight md:text-6xl">
+              Here&apos;s your {role.title} Interview for {organizationName}
+            </h1>
+            <Button
+              className="min-w-36 px-8 py-3 text-base"
+              onClick={startInterview}
+              disabled={loadingTurn || loadingAnalysis || attempt.status === "script_pending"}
+            >
+              {loadingTurn || attempt.status === "script_pending" ? "Preparing..." : "Begin"}
+            </Button>
+            {error ? <Notice tone="error" message={error} className="mx-auto max-w-xl text-left" /> : null}
+            {attempt.lastError && !error ? (
+              <Notice tone="error" message={attempt.lastError} className="mx-auto max-w-xl text-left" />
+            ) : null}
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (phase === "complete") {
+    return (
+      <main className="relative left-1/2 -mb-10 -mt-10 min-h-screen w-screen -translate-x-1/2 overflow-hidden bg-[#04070d] text-slate-100 md:-mb-12 md:-mt-12">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="interview-ambience-base" />
+          <div className="interview-ambience-layer interview-ambience-layer-a" />
+          <div className="interview-ambience-layer interview-ambience-layer-b" />
+          <div className="interview-ambience-layer interview-ambience-layer-c" />
+          <div className="interview-shape interview-shape-1" />
+          <div className="interview-shape interview-shape-2" />
+          <div className="interview-shape interview-shape-3" />
+          <div className="interview-shape interview-shape-4" />
+          <div className="interview-shape interview-shape-5" />
+        </div>
+        <section className="relative z-10 flex min-h-screen items-center justify-center px-6 text-center">
+          <h1
+            className="interview-complete-text text-5xl tracking-tight text-slate-100 md:text-6xl"
+            style={{ animationDuration: `${COMPLETE_SCENE_MS}ms` }}
+          >
+            Interview Complete
+          </h1>
+        </section>
+      </main>
+    );
+  }
+
   return (
-    <main className="space-y-8 pb-12">
-      <header className="space-y-2">
-        <Link
-          href={`/roles/${role.id}`}
-          className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted hover:text-paper-ink"
+    <main className="relative left-1/2 -mb-10 -mt-10 min-h-screen w-screen -translate-x-1/2 overflow-hidden bg-[#04070d] text-slate-100 md:-mb-12 md:-mt-12">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="interview-ambience-base" />
+        <div className="interview-ambience-layer interview-ambience-layer-a" />
+        <div className="interview-ambience-layer interview-ambience-layer-b" />
+        <div className="interview-ambience-layer interview-ambience-layer-c" />
+        <div className="interview-shape interview-shape-1" />
+        <div className="interview-shape interview-shape-2" />
+        <div className="interview-shape interview-shape-3" />
+        <div className="interview-shape interview-shape-4" />
+        <div className="interview-shape interview-shape-5" />
+      </div>
+
+      <header className="relative z-10 flex items-center justify-between px-6 pb-3 pt-6 md:px-10">
+        <button
+          type="button"
+          onClick={leaveInterview}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-500/70 bg-slate-900/50 text-base text-slate-100 transition hover:border-slate-300"
+          aria-label="Exit interview"
         >
-          {role.title}
-        </Link>
-        <h1 className="text-4xl leading-tight">Interview session</h1>
-        <p className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">
-          Status: {statusCopy[attempt.status] || attempt.status}
-        </p>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="h-4 w-4"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M6 6L18 18" />
+            <path d="M18 6L6 18" />
+          </svg>
+        </button>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleInterviewerVoice}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-500/70 bg-slate-900/50 text-slate-100 transition hover:border-slate-300"
+            aria-label={interviewerVoiceEnabled ? "Mute interviewer voice" : "Unmute interviewer voice"}
+          >
+            {interviewerVoiceEnabled ? (
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-4 w-4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M11 5L6 9H3v6h3l5 4V5z" />
+                <path d="M15.5 9.5a4 4 0 010 5" />
+                <path d="M18.5 7a7.5 7.5 0 010 10" />
+              </svg>
+            ) : (
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-4 w-4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M11 5L6 9H3v6h3l5 4V5z" />
+                <path d="M15 9l6 6" />
+                <path d="M21 9l-6 6" />
+              </svg>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-500/70 bg-slate-900/50 text-slate-100 transition hover:border-slate-300"
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {isFullscreen ? (
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-4 w-4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 15H5v4" />
+                <path d="M15 9h4V5" />
+                <path d="M5 19l5-5" />
+                <path d="M19 5l-5 5" />
+              </svg>
+            ) : (
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-4 w-4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 3H3v6" />
+                <path d="M15 21h6v-6" />
+                <path d="M3 9l6-6" />
+                <path d="M21 15l-6 6" />
+              </svg>
+            )}
+          </button>
+        </div>
       </header>
 
-      <Card className="space-y-4">
-        <p className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">Current interviewer prompt</p>
-        <h2 className="text-3xl leading-tight">
-          {latestQuestion || "Start interview when you are ready."}
-          {streamingInProgress ? <span className="animate-pulse"> |</span> : null}
-        </h2>
-        {!latestQuestion ? (
-          <Button onClick={startInterview} disabled={loadingTurn || attempt.status === "script_pending" || !attempt.script}>
-            {attempt.status === "script_pending" ? "Generating script..." : "Start interview"}
-          </Button>
-        ) : null}
-      </Card>
-
-      <Card className="space-y-4">
-        <div className="flex flex-col items-center gap-4 py-2">
-          <div
-            className={`flex h-40 w-40 flex-col items-center justify-center rounded-full border text-center transition ${
-              speech.listening ? "border-paper-accent bg-paper-elevated" : "border-paper-border bg-paper-bg"
-            }`}
-          >
-            <p className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">
-              {speech.listening ? "Recording" : loadingTurn ? "Thinking" : "Ready"}
-            </p>
-            <p className="mt-1 text-2xl">{formatDuration(speech.elapsedSec)}</p>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button
-              type="button"
-              onClick={speech.start}
-              disabled={!speech.supported || speech.listening || loadingTurn || loadingAnalysis || !latestQuestion}
-            >
-              Start recording
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={stopAndSendSpokenAnswer}
-              disabled={(!speech.listening && !draftAnswer.trim() && !speech.interimText.trim()) || loadingTurn || loadingAnalysis}
-            >
-              {loadingTurn ? "Sending..." : "Stop and send answer"}
-            </Button>
-          </div>
+      <section className="relative z-10 flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center px-6 pb-14 pt-2 md:px-10">
+        <div
+          className={`pointer-events-none absolute left-1/2 top-12 w-full max-w-[min(92vw,72rem)] -translate-x-1/2 px-6 md:top-16 ${
+            questionVisible ? "opacity-100 duration-[2500ms]" : "opacity-0 duration-300"
+          } transition-opacity ease-in-out`}
+        >
+          {responseText ? (
+            <p className="mb-6 text-center text-lg leading-relaxed text-slate-200/88 md:text-xl">{responseText}</p>
+          ) : null}
+          <div className={`interview-question-text min-h-[3.6em] text-center ${questionSizeClass}`}>{visibleQuestionText}</div>
         </div>
 
-        {!speech.supported ? (
-          <Notice
-            tone="neutral"
-            message="Speech recognition is not available in this browser. You can still type and submit your answer."
-          />
-        ) : null}
+        {foregroundVisible ? (
+          <div className="interview-support-enter relative flex w-full flex-col items-center">
+            <AudioReactiveBlob className="mt-20 md:mt-24" level={audioLevel} listening={speechListening} />
 
-        {speech.lastError ? <Notice tone="error" message={speech.lastError} /> : null}
+            <Button
+              className="mt-7 min-w-48 border-slate-500/45 bg-slate-900/45 text-slate-100 opacity-50 backdrop-blur-sm hover:border-slate-300/70 hover:bg-slate-800/55"
+              onClick={finishResponse}
+              disabled={
+                voiceUnavailable ||
+                interviewerSpeechActive ||
+                typingInProgress ||
+                loadingTurn ||
+                loadingAnalysis ||
+                responseSendActive
+              }
+            >
+              {typingInProgress
+                ? "Question typing..."
+                : loadingTurn
+                  ? "Loading next question..."
+                  : responseSendActive
+                    ? "Sending..."
+                    : "Finish Response"}
+            </Button>
 
-        {(draftAnswer || speech.interimText) && !loadingTurn ? (
-          <div className="space-y-2">
-            <p className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">Transcribed answer</p>
-            <p className="rounded-paper border border-paper-border px-3 py-2 text-paper-softInk">
-              {[draftAnswer.trim(), speech.interimText.trim()].filter(Boolean).join(" ").trim()}
-            </p>
+            {voiceUnavailable || error || attempt.lastError ? (
+              <div className="pointer-events-none absolute top-[calc(100%+1.5rem)] w-full max-w-2xl px-2">
+                <div className="pointer-events-auto space-y-3">
+                  {voiceUnavailable ? (
+                    <div className="space-y-3">
+                      <Notice
+                        className="w-full border-slate-500 text-slate-100"
+                        tone="error"
+                        message={
+                          speechSupported
+                            ? speechError || "Microphone permission is required for voice mode."
+                            : "Voice mode requires browser speech recognition support."
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="border-slate-500/45 bg-slate-900/30 text-slate-100 hover:border-slate-300"
+                        onClick={retryVoiceCapture}
+                        disabled={interviewerSpeechActive || typingInProgress || loadingTurn || loadingAnalysis}
+                      >
+                        Retry microphone access
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {error ? (
+                    <div className={`transition-opacity duration-300 ${errorFading ? "opacity-0" : "opacity-100"}`}>
+                      <Notice className="w-full border-slate-500 text-slate-100" tone="error" message={error} />
+                    </div>
+                  ) : null}
+
+                  {attempt.lastError && !error ? (
+                    <Notice className="w-full border-slate-500 text-slate-100" tone="error" message={attempt.lastError} />
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
-        <div className="space-y-2">
-          <p className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">Manual fallback</p>
-          <Textarea
-            value={draftAnswer}
-            onChange={(event) => {
-              const value = event.target.value;
-              spokenAnswerRef.current = value;
-              setDraftAnswer(value);
-            }}
-            rows={5}
-            placeholder="Type an answer and send if you prefer manual input"
-            disabled={loadingTurn || loadingAnalysis}
-          />
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              onClick={async () => {
-                await submitAnswer(draftAnswer);
-              }}
-              disabled={loadingTurn || loadingAnalysis || !draftAnswer.trim()}
+        {responseSendText ? (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-start justify-center px-6">
+            <div
+              key={responseSendKey}
+              className="interview-response-send mt-[48vh] w-full max-w-2xl rounded-paper border border-slate-400/45 bg-slate-900/65 px-5 py-4 text-sm leading-relaxed text-slate-100/88 shadow-[0_8px_28px_rgba(0,0,0,0.36)] backdrop-blur-sm"
             >
-              {loadingTurn ? "Waiting for next question..." : "Send typed answer"}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={resetSpokenDraft}
-              disabled={loadingTurn || loadingAnalysis || (!draftAnswer && !speech.interimText)}
-            >
-              Clear draft
-            </Button>
+              {responseSendText}
+            </div>
           </div>
-        </div>
+        ) : null}
 
-        {error ? <Notice tone="error" message={error} /> : null}
-        {attempt.lastError && !error ? <Notice tone="error" message={attempt.lastError} /> : null}
-      </Card>
-
+        {foregroundVisible ? (
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+            <div className="interview-support-enter text-center font-sans">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Time Spent</p>
+              <p className="mt-1 text-lg font-medium text-slate-200">{formatDuration(questionElapsedSec)}</p>
+            </div>
+          </div>
+        ) : null}
+      </section>
     </main>
   );
 }

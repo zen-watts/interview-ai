@@ -1,17 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
 
 import { useAppStore } from "@/src/components/providers/app-store-provider";
 import { STORAGE_KEY } from "@/src/lib/storage/schema";
 
 export function DevTools() {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
-  const pathname = usePathname();
   const { store, patchDevSettings } = useAppStore();
-  const inInnerPromptMode = pathname === "/dev/inner-prompt";
   const showScriptOnConclusion = store.devSettings?.showInterviewerScriptOnConclusion ?? false;
 
   const resetAppData = () => {
@@ -22,15 +18,6 @@ export function DevTools() {
   const clearBrowserStorage = () => {
     window.localStorage.clear();
     window.location.href = "/";
-  };
-
-  const toggleInnerPromptMode = () => {
-    if (inInnerPromptMode) {
-      router.push("/");
-      return;
-    }
-
-    router.push("/dev/inner-prompt");
   };
 
   return (
@@ -46,13 +33,6 @@ export function DevTools() {
       {open ? (
         <div className="mt-2 w-64 space-y-2 rounded-paper border border-paper-border bg-paper-bg p-3 shadow-sm">
           <p className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted">Developer Tools</p>
-          <button
-            type="button"
-            className="w-full rounded-paper border border-paper-border px-3 py-2 text-left text-sm text-paper-softInk transition hover:border-paper-accent hover:text-paper-ink"
-            onClick={toggleInnerPromptMode}
-          >
-            {inInnerPromptMode ? "Exit Inner Prompt mode" : "Open Inner Prompt mode"}
-          </button>
           <button
             type="button"
             className="w-full rounded-paper border border-paper-border px-3 py-2 text-left text-sm text-paper-softInk transition hover:border-paper-accent hover:text-paper-ink"

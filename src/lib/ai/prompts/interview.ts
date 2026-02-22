@@ -15,6 +15,8 @@ export function buildInterviewSystemPrompt(script: string): string {
     "- Put all questions only in the question field.",
     "- response should be brief and natural (1-2 short sentences max).",
     "- question should be concise (1 sentence preferred, 2 max).",
+    "- question must be single-part and realistic; do not stack multiple asks in one turn.",
+    "- Do not include markdown syntax or STAR section labels inside response or question text.",
     "- Do not provide coaching, hints, or feedback during interview turns.",
     "- If the previous candidate answer is vague, ask a focused follow-up before moving on.",
     "- Avoid looping on the same missing detail forever. If unresolved after a few probes, acknowledge the gap and advance.",
