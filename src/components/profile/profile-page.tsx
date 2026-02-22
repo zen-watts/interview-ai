@@ -10,26 +10,49 @@ import { Card } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import { Notice } from "@/src/components/ui/notice";
+import { Select } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
 import { createLogger } from "@/src/lib/logger";
-import type { UserProfile } from "@/src/lib/types";
+import {
+  CUSTOM_PRONOUN_OPTION,
+  DEFAULT_PRONOUN_OPTION,
+  PRONOUN_PRESET_OPTIONS,
+  type UserProfile,
+} from "@/src/lib/types";
 
 const logger = createLogger("profile");
 
 interface ProfileDraft {
   name: string;
   age: string;
-  pronouns: string;
+  pronounsOption: string;
+  pronounsCustom: string;
   resumeSummary: string;
 }
 
 function toDraft(profile: UserProfile): ProfileDraft {
+  const profilePronouns = profile.pronouns.trim();
+  const isPreset = PRONOUN_PRESET_OPTIONS.some((option) => option.value === profilePronouns);
+
   return {
     name: profile.name,
     age: profile.age ? String(profile.age) : "",
-    pronouns: profile.pronouns,
+    pronounsOption: profilePronouns ? (isPreset ? profilePronouns : CUSTOM_PRONOUN_OPTION) : DEFAULT_PRONOUN_OPTION,
+    pronounsCustom: isPreset ? "" : profilePronouns,
     resumeSummary: profile.resumeSummary,
   };
+}
+
+function resolvePronounsValue(draft: ProfileDraft): string {
+  if (draft.pronounsOption === DEFAULT_PRONOUN_OPTION) {
+    return "";
+  }
+
+  if (draft.pronounsOption === CUSTOM_PRONOUN_OPTION) {
+    return draft.pronounsCustom.trim();
+  }
+
+  return draft.pronounsOption;
 }
 
 interface ProfileFormState {
@@ -56,11 +79,12 @@ function useProfileForm(): ProfileFormState {
 
   const profile = store.profile;
   const isDirty =
-    Boolean(profile && form) &&
-    (form.name.trim() !== profile.name ||
-      form.age.trim() !== (profile.age ? String(profile.age) : "") ||
-      form.pronouns.trim() !== profile.pronouns ||
-      form.resumeSummary.trim() !== profile.resumeSummary);
+    profile && form
+      ? form.name.trim() !== profile.name ||
+        form.age.trim() !== (profile.age ? String(profile.age) : "") ||
+        resolvePronounsValue(form) !== profile.pronouns ||
+        form.resumeSummary.trim() !== profile.resumeSummary
+      : false;
 
   const handleSave = () => {
     if (!profile || !form || !isDirty) {
@@ -89,7 +113,7 @@ function useProfileForm(): ProfileFormState {
       targetJob: profile.targetJob || "Defined per role",
       experienceLevel: profile.experienceLevel || "new_grad",
       age: parsedAge,
-      pronouns: form.pronouns.trim(),
+      pronouns: resolvePronounsValue(form),
       resumeText: profile.resumeText || "",
       resumeSummary: form.resumeSummary.trim(),
     });
@@ -169,12 +193,28 @@ function ProfileFormFields({
 
         <div className="space-y-2">
           <Label htmlFor="profile-pronouns">Pronouns (optional)</Label>
-          <Input
+          <Select
             id="profile-pronouns"
-            value={form.pronouns}
-            onChange={(event) => updateField("pronouns", event.target.value)}
-            placeholder="she/her, he/him, they/them"
-          />
+            value={form.pronounsOption}
+            className={form.pronounsOption === DEFAULT_PRONOUN_OPTION ? "text-paper-muted font-normal" : "font-normal"}
+            onChange={(event) => updateField("pronounsOption", event.target.value)}
+          >
+            <option value={DEFAULT_PRONOUN_OPTION}>No preference</option>
+            {PRONOUN_PRESET_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+            <option value={CUSTOM_PRONOUN_OPTION}>Custom</option>
+          </Select>
+          {form.pronounsOption === CUSTOM_PRONOUN_OPTION ? (
+            <Input
+              id="profile-pronouns-custom"
+              value={form.pronounsCustom}
+              onChange={(event) => updateField("pronounsCustom", event.target.value)}
+              placeholder="Type your pronouns"
+            />
+          ) : null}
         </div>
       </div>
 

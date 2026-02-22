@@ -8,10 +8,16 @@ import { Card } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import { Notice } from "@/src/components/ui/notice";
+import { Select } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
 import { requestResumeSummary } from "@/src/lib/ai/client-api";
 import { createLogger } from "@/src/lib/logger";
-import type { UserProfile } from "@/src/lib/types";
+import {
+  CUSTOM_PRONOUN_OPTION,
+  DEFAULT_PRONOUN_OPTION,
+  PRONOUN_PRESET_OPTIONS,
+  type UserProfile,
+} from "@/src/lib/types";
 import { extractResumeText } from "@/src/lib/utils/resume-parser";
 
 const logger = createLogger("onboarding");
@@ -42,7 +48,8 @@ interface ProfileDraft {
   targetJob: string;
   experienceLevel: UserProfile["experienceLevel"];
   age: string;
-  pronouns: string;
+  pronounsOption: string;
+  pronounsCustom: string;
   resumeText: string;
   resumeSummary: string;
 }
@@ -52,7 +59,8 @@ const initialDraft: ProfileDraft = {
   targetJob: "Defined per role",
   experienceLevel: "new_grad",
   age: "",
-  pronouns: "",
+  pronounsOption: DEFAULT_PRONOUN_OPTION,
+  pronounsCustom: "",
   resumeText: "",
   resumeSummary: "",
 };
@@ -161,7 +169,13 @@ export function OnboardingFlow() {
       targetJob: draft.targetJob.trim() || "Defined per role",
       experienceLevel: draft.experienceLevel,
       age: parsedAge,
-      pronouns: draft.pronouns.trim(),
+      pronouns: (
+        draft.pronounsOption === DEFAULT_PRONOUN_OPTION
+          ? ""
+          : draft.pronounsOption === CUSTOM_PRONOUN_OPTION
+            ? draft.pronounsCustom
+            : draft.pronounsOption
+      ).trim(),
       resumeText: draft.resumeText,
       resumeSummary: draft.resumeSummary.trim(),
     });
@@ -175,8 +189,6 @@ export function OnboardingFlow() {
   return (
     <div className="flex min-h-[80vh] items-center justify-center">
       <Card className="w-full max-w-3xl space-y-8 p-8 md:p-10">
-        <div className="font-sans text-xs uppercase tracking-[0.16em] text-paper-muted">Onboarding</div>
-
         {step === 0 ? (
           <div className="space-y-4">
             <h1 className="text-4xl leading-tight md:text-5xl">Inner View</h1>
@@ -233,6 +245,9 @@ export function OnboardingFlow() {
         {step === 3 ? (
           <div className="space-y-5">
             <h2 className="text-3xl leading-tight">Confirm your profile</h2>
+            <p className="text-paper-softInk">
+              Add a few details so your interviewer can tailor questions and feedback.
+            </p>
 
             <div className="space-y-2">
               <Label htmlFor="profile-name">Name</Label>
@@ -261,12 +276,38 @@ export function OnboardingFlow() {
 
               <div className="space-y-2">
                 <Label htmlFor="profile-pronouns">Pronouns (optional)</Label>
-                <Input
+                <Select
                   id="profile-pronouns"
-                  value={draft.pronouns}
-                  onChange={(event) => setDraft((current) => ({ ...current, pronouns: event.target.value }))}
-                  placeholder="she/her, he/him, they/them"
-                />
+                  value={draft.pronounsOption}
+                  className={draft.pronounsOption === DEFAULT_PRONOUN_OPTION ? "text-paper-muted font-normal" : "font-normal"}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      pronounsOption: event.target.value,
+                    }))
+                  }
+                >
+                  <option value={DEFAULT_PRONOUN_OPTION}>No preference</option>
+                  {PRONOUN_PRESET_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                  <option value={CUSTOM_PRONOUN_OPTION}>Custom</option>
+                </Select>
+                {draft.pronounsOption === CUSTOM_PRONOUN_OPTION ? (
+                  <Input
+                    id="profile-pronouns-custom"
+                    value={draft.pronounsCustom}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        pronounsCustom: event.target.value,
+                      }))
+                    }
+                    placeholder="Type your pronouns"
+                  />
+                ) : null}
               </div>
             </div>
 

@@ -11,6 +11,18 @@ export const EXPERIENCE_LEVEL_OPTIONS = [
 
 export type ExperienceLevel = (typeof EXPERIENCE_LEVEL_OPTIONS)[number]["value"];
 
+export const CUSTOM_PRONOUN_OPTION = "__custom__";
+export const DEFAULT_PRONOUN_OPTION = "no_preference";
+
+export const PRONOUN_PRESET_OPTIONS = [
+  { value: "she/her", label: "she/her" },
+  { value: "he/him", label: "he/him" },
+  { value: "they/them", label: "they/them" },
+  { value: "she/they", label: "she/they" },
+  { value: "he/they", label: "he/they" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+] as const;
+
 export const INTERVIEW_CATEGORY_OPTIONS = [
   "Strictly Behavioral",
   "Mix",
