@@ -12,6 +12,7 @@ import { Card } from "@/src/components/ui/card";
 import { Modal } from "@/src/components/ui/modal";
 import { Notice } from "@/src/components/ui/notice";
 import { requestInterviewScript } from "@/src/lib/ai/client-api";
+import { cn } from "@/src/lib/utils/cn";
 import { formatDateTime } from "@/src/lib/utils/time";
 
 const statusCopy: Record<string, string> = {
@@ -46,6 +47,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
     setAttemptStatus,
     patchAttempt,
     deleteRole,
+    newlyCreatedAttemptId,
   } = useAppStore();
   const router = useRouter();
 
@@ -85,26 +87,25 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
           </p>
         </div>
 
-        <div className="flex gap-3">
-          <Button variant="ghost" onClick={() => setEditOpen(true)}>
-            Edit role
-          </Button>
-          {attempts.length > 0 ? <Button onClick={() => setAttemptOpen(true)}>Create interview</Button> : null}
-        </div>
+        <Button variant="ghost" onClick={() => setEditOpen(true)}>
+          Edit role
+        </Button>
       </header>
 
       <section className="space-y-3">
-        <h2 className="text-2xl">Times practiced</h2>
+        <h2 className="text-2xl">Interview Sessions</h2>
 
-        {attempts.length === 0 ? (
-          <Card className="space-y-3">
-            <p className="text-paper-softInk">No times practiced yet for this role.</p>
-            <Button type="button" onClick={() => setAttemptOpen(true)}>
-              Create interview
-            </Button>
-          </Card>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <button
+              type="button"
+              className="text-left"
+              onClick={() => setAttemptOpen(true)}
+            >
+              <Card className="flex h-full flex-col items-center justify-center gap-3 transition hover:border-paper-accent">
+                <span className="text-4xl leading-none text-paper-muted">+</span>
+                <span className="font-sans text-sm text-paper-muted">Create interview</span>
+              </Card>
+            </button>
             {attempts.map((attempt) => (
               <Link
                 key={attempt.id}
@@ -114,9 +115,12 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
                     : `/roles/${role.id}/attempts/${attempt.id}`
                 }
               >
-                <Card className="h-full space-y-4 transition hover:border-paper-accent">
+                <Card className={cn(
+                  "h-full space-y-4 transition hover:border-paper-accent",
+                  attempt.id === newlyCreatedAttemptId && "card-glow-border"
+                )}>
                   <div className="space-y-1">
-                    <h3 className="text-xl">{attempt.config.category}</h3>
+                    <h3 className="text-xl">{attempt.config.categories.join(" · ")}</h3>
                     <p className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">
                       {attempt.config.primaryQuestionCount} primary questions
                     </p>
@@ -132,8 +136,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
                 </Card>
               </Link>
             ))}
-          </div>
-        )}
+        </div>
       </section>
 
       {editOpen ? (
@@ -185,6 +188,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
               setAttemptLoading(true);
 
               const attempt = createAttempt(role.id, config);
+              setAttemptOpen(false);
 
               try {
                 const script = await requestInterviewScript({
@@ -193,14 +197,12 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
                   config,
                 });
                 setAttemptScript(attempt.id, script);
-                setAttemptOpen(false);
               } catch (error) {
                 const message = error instanceof Error ? error.message : "Failed to generate script.";
                 setAttemptStatus(attempt.id, "error", message);
                 patchAttempt(attempt.id, {
                   script: null,
                 });
-                setAttemptError(message);
               } finally {
                 setAttemptLoading(false);
               }

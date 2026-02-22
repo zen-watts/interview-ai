@@ -44,11 +44,15 @@ interface ProfileInput {
   pronouns: UserProfile["pronouns"];
   resumeText: string;
   resumeSummary: string;
+  resumeEducation: string;
+  resumeExperience: string;
 }
 
 interface AppStoreContextValue {
   store: AppStore;
   hydrated: boolean;
+  newlyCreatedRoleId: string | null;
+  newlyCreatedAttemptId: string | null;
   saveProfile: (input: ProfileInput) => void;
   createRole: (input: RoleInput) => RoleProfile;
   updateRole: (roleId: string, input: RoleInput) => void;
@@ -69,6 +73,8 @@ const AppStoreContext = createContext<AppStoreContextValue | null>(null);
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<AppStore>(createEmptyStore());
   const [hydrated, setHydrated] = useState(false);
+  const [newlyCreatedRoleId, setNewlyCreatedRoleId] = useState<string | null>(null);
+  const [newlyCreatedAttemptId, setNewlyCreatedAttemptId] = useState<string | null>(null);
 
   useEffect(() => {
     const loaded = loadStore();
@@ -131,6 +137,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         roles: [role, ...current.roles],
       };
     });
+
+    setNewlyCreatedRoleId(role.id);
 
     return role;
   }, []);
@@ -223,6 +231,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         attempts: [attempt, ...current.attempts],
       };
     });
+
+    setNewlyCreatedAttemptId(attempt.id);
 
     return attempt;
   }, []);
@@ -352,6 +362,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     () => ({
       store,
       hydrated,
+      newlyCreatedRoleId,
+      newlyCreatedAttemptId,
       saveProfile,
       createRole,
       updateRole,
@@ -372,6 +384,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       createRole,
       deleteRole,
       hydrated,
+      newlyCreatedAttemptId,
+      newlyCreatedRoleId,
       patchAttempt,
       replaceTranscript,
       saveProfile,

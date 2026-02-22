@@ -24,6 +24,8 @@ const profileSchema = z.object({
   pronouns: z.string().default(""),
   resumeText: z.string(),
   resumeSummary: z.string(),
+  resumeEducation: z.string().default(""),
+  resumeExperience: z.string().default(""),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -51,10 +53,13 @@ const roleSchema = z.object({
 });
 
 const configSchema = z.object({
-  personaIntensity: z.number().min(0).max(100),
+  temperament: z.number().min(0).max(100).default(25),
+  questionDifficulty: z.number().min(0).max(100).default(25),
+  personaIntensity: z.number().min(0).max(100).optional(),
   followUpIntensity: z.number().min(0).max(100),
   primaryQuestionCount: z.number().min(1).max(10),
-  category: z.enum(interviewCategoryValues),
+  categories: z.array(z.enum(interviewCategoryValues)).min(1).default(["Strictly Behavioral"]),
+  category: z.enum(["Strictly Behavioral", "Mix", "Technical Concepts", "Unhinged"]).optional(),
   notes: z.string(),
 });
 
@@ -138,6 +143,8 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
               ...parsed.data.profile,
               age: parsed.data.profile.age,
               pronouns: parsed.data.profile.pronouns,
+              resumeEducation: parsed.data.profile.resumeEducation ?? "",
+              resumeExperience: parsed.data.profile.resumeExperience ?? "",
             }
           : null,
         roles: parsed.data.roles.map((role) => ({
@@ -161,6 +168,8 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
               ...v1.profile,
               age: v1.profile.age ?? null,
               pronouns: v1.profile.pronouns ?? "",
+              resumeEducation: "",
+              resumeExperience: "",
             }
           : null,
         roles: v1.roles.map((role) => ({

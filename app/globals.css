@@ -196,9 +196,85 @@ textarea {
   will-change: transform, opacity, filter;
 }
 
-.interview-complete-text {
-  animation: interviewCompleteTextFade 1700ms ease-in-out forwards;
-  will-change: opacity, filter;
+@keyframes onboardingStepIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes onboardingStepOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.onboarding-step-enter {
+  animation: onboardingStepIn 220ms ease-out forwards;
+}
+
+.onboarding-step-exit {
+  animation: onboardingStepOut 160ms ease-in forwards;
+}
+
+.onboarding-step-idle {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes fadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-up {
+  opacity: 0;
+  animation: fadeUp 320ms ease-out forwards;
+  animation-fill-mode: both;
+}
+
+.fade-up-slower {
+  opacity: 0;
+  animation: fadeUp 420ms ease-out forwards;
+  animation-delay: 0ms;
+  animation-fill-mode: both;
+}
+
+.fade-up-slowest {
+  opacity: 0;
+  animation: fadeUp 520ms ease-out forwards;
+  animation-delay: 0ms;
+  animation-fill-mode: both;
+}
+
+@keyframes onboardingCardOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.99);
+  }
+}
+
+.onboarding-card-exit {
+  animation: onboardingCardOut 220ms ease-in forwards;
 }
 
 @keyframes modalOverlayIn {
@@ -257,6 +333,66 @@ textarea {
 
 .modal-panel-enter {
   animation: modalPanelIn 220ms ease-out forwards;
+}
+
+@keyframes profilePanelIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes profilePanelOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+.profile-panel-enter {
+  animation: profilePanelIn 220ms ease-out forwards;
+}
+
+.profile-panel-exit {
+  animation: profilePanelOut 200ms ease-in forwards;
+}
+
+.profile-panel-idle {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@keyframes loadingDots {
+  0% {
+    width: 0;
+  }
+  33% {
+    width: 0.35em;
+  }
+  66% {
+    width: 0.7em;
+  }
+  100% {
+    width: 1.05em;
+  }
+}
+
+.loading-dots::after {
+  content: "...";
+  display: inline-block;
+  width: 0;
+  margin-left: 0.2em;
+  overflow: hidden;
+  vertical-align: baseline;
+  animation: loadingDots 900ms steps(3, end) infinite;
 }
 
 @keyframes interviewAmbienceDrift {
@@ -407,5 +543,32 @@ textarea {
   100% {
     border-radius: 42% 58% 52% 48% / 46% 40% 60% 54%;
     transform: translate3d(-1%, -1%, 0) rotate(0deg);
+  }
+}
+
+@property --border-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.card-glow-border {
+  border: 2px solid transparent !important;
+  background:
+    linear-gradient(var(--paper-elevated), var(--paper-elevated)) padding-box,
+    conic-gradient(
+      from var(--border-angle),
+      var(--paper-border),
+      var(--paper-accent),
+      var(--paper-soft-ink),
+      var(--paper-accent),
+      var(--paper-border)
+    ) border-box;
+  animation: spinBorder 3s linear infinite;
+}
+
+@keyframes spinBorder {
+  to {
+    --border-angle: 360deg;
   }
 }

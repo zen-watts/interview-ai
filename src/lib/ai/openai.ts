@@ -2,6 +2,10 @@ import "server-only";
 
 import OpenAI from "openai";
 
+console.log("ENV CHECK:");
+console.log("OPENAI_API_KEY exists:", !!process.env.OPENAI_API_KEY);
+console.log("OPENAI_MODEL:", process.env.OPENAI_MODEL);
+
 let cachedClient: OpenAI | null = null;
 
 /**

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { HomePage } from "@/src/components/home/home-page";
 import { ProfileModalContent } from "@/src/components/profile/profile-page";
@@ -13,6 +14,7 @@ import { Modal } from "@/src/components/ui/modal";
 export default function ProfileRoute() {
   const { hydrated, store } = useAppStore();
   const router = useRouter();
+  const [isResumePanelOpen, setIsResumePanelOpen] = useState(false);
 
   if (!hydrated) {
     return (
@@ -41,8 +43,14 @@ export default function ProfileRoute() {
   return (
     <>
       <HomePage />
-      <Modal title="Profile" onClose={() => router.push("/")} widthClassName="max-w-3xl">
-        <ProfileModalContent />
+      <Modal
+        title="Profile"
+        onClose={() => router.push("/")}
+        widthClassName="max-w-3xl"
+        showHeader={!isResumePanelOpen}
+        showClose={!isResumePanelOpen}
+      >
+        <ProfileModalContent onResumePanelStateChange={setIsResumePanelOpen} />
       </Modal>
     </>
   );

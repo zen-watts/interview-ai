@@ -9,6 +9,7 @@ import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { Modal } from "@/src/components/ui/modal";
 import type { RoleProfile } from "@/src/lib/types";
+import { cn } from "@/src/lib/utils/cn";
 import { formatDateTime } from "@/src/lib/utils/time";
 
 function sortByUpdatedAt(a: RoleProfile, b: RoleProfile) {
@@ -16,7 +17,7 @@ function sortByUpdatedAt(a: RoleProfile, b: RoleProfile) {
 }
 
 export function HomePage() {
-  const { store, createRole, toggleRoleFavorite } = useAppStore();
+  const { store, createRole, toggleRoleFavorite, newlyCreatedRoleId } = useAppStore();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const pinnedRoles = useMemo(() => {
@@ -34,7 +35,10 @@ export function HomePage() {
 
     return (
       <Link href={`/roles/${role.id}`}>
-        <Card className="relative h-full space-y-4 transition hover:border-paper-accent">
+        <Card className={cn(
+          "relative h-full space-y-4 transition-all duration-200 hover:-translate-y-1 hover:border-paper-accent hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]",
+          role.id === newlyCreatedRoleId && "card-glow-border"
+        )}>
           <button
             type="button"
             aria-label={role.isFavorited ? "Unpin role" : "Pin role"}
@@ -129,7 +133,7 @@ export function HomePage() {
                 className="text-left"
                 onClick={() => setIsCreateOpen(true)}
               >
-                <Card className="flex h-full flex-col items-center justify-center gap-3 transition hover:border-paper-accent">
+                <Card className="flex h-full flex-col items-center justify-center gap-3 transition-all duration-200 hover:-translate-y-1 hover:border-paper-accent hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
                   <span className="text-4xl leading-none text-paper-muted">+</span>
                   <span className="font-sans text-sm text-paper-muted">Create role</span>
                 </Card>

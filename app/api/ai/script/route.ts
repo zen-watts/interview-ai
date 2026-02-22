@@ -25,6 +25,8 @@ const bodySchema = z.object({
     pronouns: z.string().default(""),
     resumeText: z.string(),
     resumeSummary: z.string(),
+    resumeEducation: z.string().default(""),
+    resumeExperience: z.string().default(""),
     createdAt: z.string(),
     updatedAt: z.string(),
   }),
@@ -39,10 +41,11 @@ const bodySchema = z.object({
     updatedAt: z.string(),
   }),
   config: z.object({
-    personaIntensity: z.number().min(0).max(100),
+    temperament: z.number().min(0).max(100),
+    questionDifficulty: z.number().min(0).max(100),
     followUpIntensity: z.number().min(0).max(100),
     primaryQuestionCount: z.number().min(1).max(10),
-    category: z.enum(["Strictly Behavioral", "Mix", "Technical Concepts", "Unhinged"]),
+    categories: z.array(z.enum(["Strictly Behavioral", "Technical Concepts", "Unhinged"])).min(1),
     notes: z.string(),
   }),
 });
