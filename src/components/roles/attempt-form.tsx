@@ -5,17 +5,17 @@ import { FormEvent, useState } from "react";
 import { Button } from "@/src/components/ui/button";
 import { Label } from "@/src/components/ui/label";
 import { Notice } from "@/src/components/ui/notice";
-import { Select } from "@/src/components/ui/select";
 import { Slider } from "@/src/components/ui/slider";
 import { Textarea } from "@/src/components/ui/textarea";
-import { INTERVIEW_CATEGORY_OPTIONS, type InterviewConfig } from "@/src/lib/types";
+import { cn } from "@/src/lib/utils/cn";
+import { INTERVIEW_CATEGORY_OPTIONS, type InterviewCategory, type InterviewConfig } from "@/src/lib/types";
 
 export const defaultInterviewConfig: InterviewConfig = {
   temperament: 25,
   questionDifficulty: 25,
   followUpIntensity: 45,
   primaryQuestionCount: 5,
-  category: "Strictly Behavioral",
+  categories: ["Strictly Behavioral"],
   notes: "",
 };
 
@@ -112,23 +112,34 @@ export function AttemptForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="category" hint="The type of questions asked — behavioral, technical, a mix, or something unexpected.">Category</Label>
-        <Select
-          id="category"
-          value={config.category}
-          onChange={(event) =>
-            setConfig((current) => ({
-              ...current,
-              category: event.target.value as InterviewConfig["category"],
-            }))
-          }
-        >
-          {INTERVIEW_CATEGORY_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </Select>
+        <Label hint="Pick one or more question types. Select multiple to create a blended interview.">Categories</Label>
+        <div className="flex flex-wrap gap-2">
+          {INTERVIEW_CATEGORY_OPTIONS.map((option) => {
+            const isSelected = config.categories.includes(option);
+            return (
+              <button
+                key={option}
+                type="button"
+                className={cn(
+                  "rounded-paper border px-3 py-1.5 font-sans text-sm transition",
+                  isSelected
+                    ? "border-paper-accent bg-paper-accent/10 text-paper-ink"
+                    : "border-paper-border text-paper-muted hover:border-paper-accent",
+                )}
+                onClick={() =>
+                  setConfig((current) => {
+                    const next = isSelected
+                      ? current.categories.filter((c) => c !== option)
+                      : [...current.categories, option];
+                    return { ...current, categories: next.length > 0 ? next : current.categories };
+                  })
+                }
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="space-y-2">

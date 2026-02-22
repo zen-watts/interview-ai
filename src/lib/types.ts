@@ -25,7 +25,6 @@ export const PRONOUN_PRESET_OPTIONS = [
 
 export const INTERVIEW_CATEGORY_OPTIONS = [
   "Strictly Behavioral",
-  "Mix",
   "Technical Concepts",
   "Unhinged",
 ] as const;
@@ -68,7 +67,7 @@ export interface InterviewConfig {
   questionDifficulty: number;
   followUpIntensity: number;
   primaryQuestionCount: number;
-  category: InterviewCategory;
+  categories: InterviewCategory[];
   notes: string;
 }
 
