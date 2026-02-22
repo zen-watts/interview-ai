@@ -24,6 +24,8 @@ const profileSchema = z.object({
   pronouns: z.string().default(""),
   resumeText: z.string(),
   resumeSummary: z.string(),
+  resumeEducation: z.string().default(""),
+  resumeExperience: z.string().default(""),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -141,6 +143,8 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
               ...parsed.data.profile,
               age: parsed.data.profile.age,
               pronouns: parsed.data.profile.pronouns,
+              resumeEducation: parsed.data.profile.resumeEducation ?? "",
+              resumeExperience: parsed.data.profile.resumeExperience ?? "",
             }
           : null,
         roles: parsed.data.roles.map((role) => ({
@@ -164,6 +168,8 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
               ...v1.profile,
               age: v1.profile.age ?? null,
               pronouns: v1.profile.pronouns ?? "",
+              resumeEducation: "",
+              resumeExperience: "",
             }
           : null,
         roles: v1.roles.map((role) => ({

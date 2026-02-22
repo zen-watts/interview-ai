@@ -25,6 +25,8 @@ const bodySchema = z.object({
     pronouns: z.string().default(""),
     resumeText: z.string(),
     resumeSummary: z.string(),
+    resumeEducation: z.string().default(""),
+    resumeExperience: z.string().default(""),
     createdAt: z.string(),
     updatedAt: z.string(),
   }),

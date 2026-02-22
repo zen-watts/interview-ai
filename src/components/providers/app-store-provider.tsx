@@ -44,6 +44,8 @@ interface ProfileInput {
   pronouns: UserProfile["pronouns"];
   resumeText: string;
   resumeSummary: string;
+  resumeEducation: string;
+  resumeExperience: string;
 }
 
 interface AppStoreContextValue {

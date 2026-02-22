@@ -10,11 +10,15 @@ export function Modal({
   children,
   onClose,
   widthClassName = "max-w-2xl",
+  showHeader = true,
+  showClose = true,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   widthClassName?: string;
+  showHeader?: boolean;
+  showClose?: boolean;
 }) {
   const [isClosing, setIsClosing] = useState(false);
   const animationDurationMs = 260;
@@ -54,16 +58,20 @@ export function Modal({
           widthClassName
         )}
       >
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <h2 className="text-2xl text-paper-ink">{title}</h2>
-          <button
-            type="button"
-            className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted hover:text-paper-ink"
-            onClick={handleClose}
-          >
-            Close
-          </button>
-        </div>
+        {showHeader ? (
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-2xl text-paper-ink">{title}</h2>
+            {showClose ? (
+              <button
+                type="button"
+                className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted hover:text-paper-ink"
+                onClick={handleClose}
+              >
+                Close
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {children}
       </div>
     </div>

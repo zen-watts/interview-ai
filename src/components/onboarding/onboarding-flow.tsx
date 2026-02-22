@@ -10,7 +10,6 @@ import { Label } from "@/src/components/ui/label";
 import { Notice } from "@/src/components/ui/notice";
 import { Select } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
-import { requestResumeSummary } from "@/src/lib/ai/client-api";
 import { createLogger } from "@/src/lib/logger";
 import {
   CUSTOM_PRONOUN_OPTION,
@@ -18,6 +17,7 @@ import {
   PRONOUN_PRESET_OPTIONS,
   type UserProfile,
 } from "@/src/lib/types";
+import { requestResumeSummary } from "@/src/lib/ai/client-api";
 import { extractResumeText } from "@/src/lib/utils/resume-parser";
 
 const logger = createLogger("onboarding");
@@ -52,6 +52,8 @@ interface ProfileDraft {
   pronounsCustom: string;
   resumeText: string;
   resumeSummary: string;
+  resumeEducation: string;
+  resumeExperience: string;
 }
 
 const initialDraft: ProfileDraft = {
@@ -63,6 +65,8 @@ const initialDraft: ProfileDraft = {
   pronounsCustom: "",
   resumeText: "",
   resumeSummary: "",
+  resumeEducation: "",
+  resumeExperience: "",
 };
 
 export function OnboardingFlow() {
@@ -74,27 +78,52 @@ export function OnboardingFlow() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [transitionState, setTransitionState] = useState<"idle" | "out" | "in">("idle");
+  const [isFinishing, setIsFinishing] = useState(false);
+
+  const isTransitioning = transitionState !== "idle";
+  const canContinue = step !== 2 || Boolean(draft.resumeText);
+  const stepClassName =
+    transitionState === "out"
+      ? "onboarding-step-exit"
+      : transitionState === "in"
+        ? "onboarding-step-enter"
+        : "onboarding-step-idle";
 
   const canFinish = useMemo(() => {
     return draft.name.trim().length > 0;
   }, [draft.name]);
 
+  const transitionToStep = (nextStep: number) => {
+    if (isTransitioning || nextStep === step) {
+      return;
+    }
+
+    setTransitionState("out");
+    window.setTimeout(() => {
+      setStep(nextStep);
+      setTransitionState("in");
+      window.setTimeout(() => {
+        setTransitionState("idle");
+      }, 220);
+    }, 160);
+  };
+
   const nextStep = () => {
     setError(null);
     setStatusMessage(null);
-    setStep((current) => Math.min(current + 1, 3));
+    transitionToStep(Math.min(step + 1, 3));
   };
 
   const prevStep = () => {
     setError(null);
     setStatusMessage(null);
-    setStep((current) => Math.max(current - 1, 0));
+    transitionToStep(Math.max(step - 1, 0));
   };
 
   const handleResumeUpload = async (file: File) => {
     setUploading(true);
     setError(null);
-    setStatusMessage("Extracting resume text...");
     setResumeFileName(file.name);
 
     try {
@@ -147,6 +176,9 @@ export function OnboardingFlow() {
   };
 
   const handleFinish = () => {
+    if (isFinishing) {
+      return;
+    }
     const normalizedAge = draft.age.trim();
     let parsedAge: number | null = null;
 
@@ -164,115 +196,139 @@ export function OnboardingFlow() {
       return;
     }
 
-    saveProfile({
-      name: draft.name.trim(),
-      targetJob: draft.targetJob.trim() || "Defined per role",
-      experienceLevel: draft.experienceLevel,
-      age: parsedAge,
-      pronouns: (
-        draft.pronounsOption === DEFAULT_PRONOUN_OPTION
-          ? ""
-          : draft.pronounsOption === CUSTOM_PRONOUN_OPTION
-            ? draft.pronounsCustom
-            : draft.pronounsOption
-      ).trim(),
-      resumeText: draft.resumeText,
-      resumeSummary: draft.resumeSummary.trim(),
-    });
+    setIsFinishing(true);
+    window.setTimeout(() => {
+      saveProfile({
+        name: draft.name.trim(),
+        targetJob: draft.targetJob.trim() || "Defined per role",
+        experienceLevel: draft.experienceLevel,
+        age: parsedAge,
+        pronouns: (
+          draft.pronounsOption === DEFAULT_PRONOUN_OPTION
+            ? ""
+            : draft.pronounsOption === CUSTOM_PRONOUN_OPTION
+              ? draft.pronounsCustom
+              : draft.pronounsOption
+        ).trim(),
+        resumeText: draft.resumeText,
+        resumeSummary: draft.resumeSummary.trim(),
+        resumeEducation: draft.resumeEducation.trim(),
+        resumeExperience: draft.resumeExperience.trim(),
+      });
 
-    logger.info("Onboarding complete. User profile saved.", {
-      hasResumeText: Boolean(draft.resumeText),
-      hasResumeSummary: Boolean(draft.resumeSummary),
-    });
+      logger.info("Onboarding complete. User profile saved.", {
+        hasResumeText: Boolean(draft.resumeText),
+        hasResumeSummary: Boolean(draft.resumeSummary),
+      });
+    }, 220);
   };
 
   return (
-    <div className="flex min-h-[80vh] items-center justify-center">
-      <Card className="w-full max-w-3xl space-y-8 p-8 md:p-10">
-        {step === 0 ? (
-          <div className="space-y-4">
-            <h1 className="text-4xl leading-tight md:text-5xl">Inner View</h1>
-            <p className="max-w-2xl text-paper-softInk">
-              Interview practice that feels realistic, focused, and calm.
-            </p>
-          </div>
-        ) : null}
+    <>
+      <div className="flex min-h-[80vh] items-center justify-center">
+        <Card className={`w-full max-w-3xl space-y-8 p-8 md:p-10 ${isFinishing ? "onboarding-card-exit" : ""}`}>
+        <div className="font-sans text-xs uppercase tracking-[0.16em] text-paper-muted">Onboarding</div>
 
-        {step === 1 ? (
-          <div className="space-y-4">
-            <h2 className="text-3xl leading-tight">How this works</h2>
-            <p className="max-w-2xl text-paper-softInk">
-              We build interview sessions from your background and role context, then run a realistic turn-by-turn
-              conversation.
-            </p>
-            <p className="max-w-2xl text-paper-softInk">
-              After each interview, you get direct, no-score analysis focused on what to fix next.
-            </p>
-          </div>
-        ) : null}
-
-        {step === 2 ? (
-          <div className="space-y-5">
-            <h2 className="text-3xl leading-tight">Upload your resume (optional)</h2>
-            <p className="text-paper-softInk">Supports PDF, DOCX, and TXT. You can skip this and enter info manually.</p>
-
-            <div className="space-y-2">
-              <Label htmlFor="resume-upload">Resume file</Label>
-              <Input
-                id="resume-upload"
-                type="file"
-                accept=".pdf,.docx,.txt,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (!file) {
-                    return;
-                  }
-
-                  void handleResumeUpload(file);
-                }}
-              />
+        <div className={stepClassName}>
+          {step === 0 ? (
+            <div className="space-y-4">
+              <h1 className="fade-up text-4xl leading-tight md:text-5xl">Inner View</h1>
+              <p className="fade-up-slower max-w-2xl text-paper-softInk">
+                Interview practice that feels realistic, focused, and calm.
+              </p>
             </div>
+          ) : null}
 
-            {resumeFileName ? (
-              <p className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted">Loaded: {resumeFileName}</p>
-            ) : null}
-            {statusMessage ? <Notice message={statusMessage} tone="success" /> : null}
-            {error ? <Notice message={error} tone="error" /> : null}
-            {uploading ? <p className="text-sm text-paper-softInk">Working on your resume...</p> : null}
-          </div>
-        ) : null}
-
-        {step === 3 ? (
-          <div className="space-y-5">
-            <h2 className="text-3xl leading-tight">Confirm your profile</h2>
-            <p className="text-paper-softInk">
-              Add a few details so your interviewer can tailor questions and feedback.
-            </p>
-
-            <div className="space-y-2">
-              <Label htmlFor="profile-name">Name</Label>
-              <Input
-                id="profile-name"
-                value={draft.name}
-                onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-                placeholder="Jane Candidate"
-              />
+          {step === 1 ? (
+            <div className="space-y-4">
+              <h2 className="fade-up text-3xl leading-tight">How this works</h2>
+              <p className="fade-up-slower max-w-2xl text-paper-softInk">
+                We build interview sessions from your background and role context, then run a realistic turn-by-turn
+                conversation.
+              </p>
+              <p className="fade-up-slowest max-w-2xl text-paper-softInk">
+                After each interview, you get direct, no-score analysis focused on what to fix next.
+              </p>
             </div>
+          ) : null}
 
-            <div className="grid gap-5 md:grid-cols-2">
+          {step === 2 ? (
+            <div className="space-y-5">
+              <h2 className="text-3xl leading-tight">Upload your resume (optional)</h2>
+              <p className="text-paper-softInk">Supports PDF, DOCX, and TXT. You can skip this and enter info manually.</p>
+
+              <div className="space-y-4 rounded-paper border border-paper-border bg-paper-elevated p-4">
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="resume-upload">Resume file</Label>
+                  </div>
+                  <label
+                    htmlFor="resume-upload"
+                    className="inline-flex w-fit cursor-pointer items-center justify-center rounded-paper border border-paper-border bg-paper-bg px-3 py-2 text-sm font-medium text-paper-ink transition hover:border-paper-accent"
+                  >
+                    Choose file
+                  </label>
+                  <input
+                    id="resume-upload"
+                    type="file"
+                    className="sr-only"
+                    accept=".pdf,.docx,.txt,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) {
+                        return;
+                      }
+
+                      void handleResumeUpload(file);
+                    }}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-paper border border-paper-border bg-paper-bg px-3 py-2">
+                  <p className="text-sm text-paper-muted">
+                    {resumeFileName ? resumeFileName : "No file selected yet."}
+                  </p>
+                  {resumeFileName ? (
+                    <span className="font-sans text-[0.7rem] uppercase tracking-[0.16em] text-paper-muted">
+                      Ready
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              {statusMessage ? <Notice message={statusMessage} tone="success" /> : null}
+              {error ? <Notice message={error} tone="error" /> : null}
+              {uploading ? <p className="text-sm text-paper-softInk">Working on your resume...</p> : null}
+            </div>
+          ) : null}
+
+          {step === 3 ? (
+            <div className="space-y-5">
+              <h2 className="text-3xl leading-tight">Confirm your profile</h2>
+
               <div className="space-y-2">
-                <Label htmlFor="profile-age">Age (optional)</Label>
+                <Label htmlFor="profile-name">Name</Label>
                 <Input
-                  id="profile-age"
-                  type="number"
-                  min={1}
-                  max={120}
-                  inputMode="numeric"
-                  value={draft.age}
-                  onChange={(event) => setDraft((current) => ({ ...current, age: event.target.value }))}
-                  placeholder="29"
+                  id="profile-name"
+                  value={draft.name}
+                  onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+                  placeholder="Jane Candidate"
                 />
               </div>
+
+              <div className="grid gap-5 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="profile-age">Age (optional)</Label>
+                  <Input
+                    id="profile-age"
+                    type="number"
+                    min={1}
+                    max={120}
+                    inputMode="numeric"
+                    value={draft.age}
+                    onChange={(event) => setDraft((current) => ({ ...current, age: event.target.value }))}
+                    placeholder="29"
+                  />
+                </div>
 
               <div className="space-y-2">
                 <Label htmlFor="profile-pronouns">Pronouns (optional)</Label>
@@ -309,47 +365,84 @@ export function OnboardingFlow() {
                   />
                 ) : null}
               </div>
+              </div>
+
+              {draft.resumeText ? (
+                <div className="space-y-2">
+                  <Label htmlFor="resume-summary">Resume context summary</Label>
+                  <Textarea
+                    id="resume-summary"
+                    value={draft.resumeSummary}
+                    onChange={(event) => setDraft((current) => ({ ...current, resumeSummary: event.target.value }))}
+                    rows={4}
+                    placeholder="Optional summary used to personalize interviews"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="resume-education">Education</Label>
+                    <Textarea
+                      id="resume-education"
+                      value={draft.resumeEducation}
+                      onChange={(event) => setDraft((current) => ({ ...current, resumeEducation: event.target.value }))}
+                      rows={3}
+                      placeholder="Schools, programs, and key coursework"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="resume-experience">Experience</Label>
+                    <Textarea
+                      id="resume-experience"
+                      value={draft.resumeExperience}
+                      onChange={(event) => setDraft((current) => ({ ...current, resumeExperience: event.target.value }))}
+                      rows={4}
+                      placeholder="Roles, responsibilities, and impact"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {error ? <Notice message={error} tone="error" /> : null}
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="resume-summary">Resume context summary</Label>
-              <Textarea
-                id="resume-summary"
-                value={draft.resumeSummary}
-                onChange={(event) => setDraft((current) => ({ ...current, resumeSummary: event.target.value }))}
-                rows={4}
-                placeholder="Optional summary used to personalize interviews"
-              />
-            </div>
-
-            {error ? <Notice message={error} tone="error" /> : null}
-          </div>
-        ) : null}
-
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          {step > 0 ? (
-            <Button type="button" variant="ghost" onClick={prevStep}>
-              Back
-            </Button>
           ) : null}
+        </div>
 
-          {step < 3 ? (
-            <Button type="button" onClick={nextStep} disabled={uploading}>
-              {step === 2 ? "Continue" : "Next"}
-            </Button>
-          ) : (
-            <Button type="button" onClick={handleFinish} disabled={!canFinish}>
-              Finish onboarding
-            </Button>
-          )}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <div className="flex flex-wrap items-center gap-3">
+            {step > 0 ? (
+              <Button type="button" variant="ghost" onClick={prevStep} disabled={isTransitioning}>
+                Back
+              </Button>
+            ) : null}
+
+            {step < 3 ? (
+              <Button
+                type="button"
+                onClick={nextStep}
+                disabled={uploading || isTransitioning || !canContinue}
+              >
+                {step === 2 ? "Continue" : "Next"}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={handleFinish}
+                disabled={!canFinish || isTransitioning || isFinishing}
+              >
+                Finish onboarding
+              </Button>
+            )}
+          </div>
 
           {step === 2 ? (
-            <Button type="button" variant="ghost" onClick={nextStep} disabled={uploading}>
+            <Button type="button" variant="ghost" onClick={nextStep} disabled={uploading || isTransitioning}>
               Skip resume
             </Button>
           ) : null}
         </div>
-      </Card>
-    </div>
+        </Card>
+      </div>
+    </>
   );
 }

@@ -26,6 +26,25 @@ export function buildScriptGenerationUserPrompt(input: {
   config: InterviewConfig;
 }): string {
   const { profile, role, config } = input;
+  const resumeContext = (() => {
+    const summary = profile.resumeSummary?.trim();
+    if (summary) {
+      return summary;
+    }
+
+    const education = profile.resumeEducation?.trim();
+    const experience = profile.resumeExperience?.trim();
+    if (education || experience) {
+      return [
+        education ? `Education: ${education}` : null,
+        experience ? `Experience: ${experience}` : null,
+      ]
+        .filter(Boolean)
+        .join(" | ");
+    }
+
+    return "(none)";
+  })();
 
   return [
     "Generate the interviewer system prompt for this interview attempt.",
@@ -36,7 +55,7 @@ export function buildScriptGenerationUserPrompt(input: {
     `- Pronouns: ${profile.pronouns || "(not provided)"}`,
     `- Target job: ${profile.targetJob}`,
     `- Experience level: ${profile.experienceLevel}`,
-    `- Resume summary: ${profile.resumeSummary || "(none)"}`,
+    `- Resume summary: ${resumeContext}`,
     "",
     "Role Context:",
     `- Title: ${role.title}`,

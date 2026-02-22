@@ -47,6 +47,8 @@ export interface UserProfile {
   pronouns: string;
   resumeText: string;
   resumeSummary: string;
+  resumeEducation: string;
+  resumeExperience: string;
   createdAt: string;
   updatedAt: string;
 }
