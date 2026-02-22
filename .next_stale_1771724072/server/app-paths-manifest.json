@@ -1,0 +1,7 @@
+{
+  "/api/ai/script/route": "app/api/ai/script/route.js",
+  "/roles/[roleId]/attempts/[attemptId]/page": "app/roles/[roleId]/attempts/[attemptId]/page.js",
+  "/roles/[roleId]/attempts/[attemptId]/conclusion/page": "app/roles/[roleId]/attempts/[attemptId]/conclusion/page.js",
+  "/roles/[roleId]/page": "app/roles/[roleId]/page.js",
+  "/page": "app/page.js"
+}

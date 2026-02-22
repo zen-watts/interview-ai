@@ -21,16 +21,14 @@ const statusCopy: Record<string, string> = {
   error: "Needs attention",
 };
 
-/**
- * Post-interview page that contains analysis, transcript review, and stored script.
- */
 export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string; attemptId: string }) {
-  const { store, setAttemptStatus, setAttemptAnalysis } = useAppStore();
+  const { store, setAttemptStatus, setAttemptAnalysis, patchDevSettings } = useAppStore();
   const router = useRouter();
 
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [showScript, setShowScript] = useState(store.devSettings.showInterviewerScriptOnConclusion);
 
   const role = useMemo(() => store.roles.find((item) => item.id === roleId) ?? null, [roleId, store.roles]);
   const attempt = useMemo(
@@ -47,6 +45,10 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
       router.replace(`/roles/${role.id}/attempts/${attempt.id}`);
     }
   }, [attempt, role, router]);
+
+  useEffect(() => {
+    setShowScript(store.devSettings.showInterviewerScriptOnConclusion);
+  }, [store.devSettings.showInterviewerScriptOnConclusion]);
 
   if (!role || !attempt) {
     return (
@@ -76,136 +78,174 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
     setAttemptStatus(attempt.id, "analysis_pending");
 
     try {
+      logger.info("analysis.request.started", {
+        attemptId: attempt.id,
+        transcriptLength: transcript.length,
+      });
+
       const analysis = await requestInterviewAnalysis({
         script: attempt.script,
         transcript,
       });
 
       setAttemptAnalysis(attempt.id, analysis);
+      logger.info("analysis.request.completed", {
+        attemptId: attempt.id,
+        redFlagCount: analysis.red_flags.length,
+      });
     } catch (analysisError) {
       const message = analysisError instanceof Error ? analysisError.message : "Analysis failed.";
       setAttemptStatus(attempt.id, "analysis_pending", message);
       setError(message);
-      logger.error("Interview analysis failed.", { message, attemptId: attempt.id });
+      logger.error("analysis.request.failed", { message, attemptId: attempt.id });
     } finally {
       setLoadingAnalysis(false);
     }
   };
 
+  const isDevMode = process.env.NODE_ENV !== "production";
+  const canShowScriptToggle = isDevMode && Boolean(attempt.script);
+
   return (
     <main className="space-y-8 pb-12">
-      <header className="space-y-2">
+      <header className="space-y-3">
         <Link
           href={`/roles/${role.id}`}
           className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted hover:text-paper-ink"
         >
           {role.title}
         </Link>
-        <h1 className="text-4xl leading-tight">Interview conclusion</h1>
+        <h1 className="text-4xl leading-tight">Analysis Mode</h1>
         <p className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">
           Status: {statusCopy[attempt.status] || attempt.status}
         </p>
       </header>
 
-      <Card className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-2xl">Analysis</h2>
-          {attempt.script && attempt.transcript.length > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={loadingAnalysis}
-              onClick={async () => {
-                await runAnalysis(attempt.transcript);
-              }}
-            >
-              {loadingAnalysis ? "Analyzing..." : "Re-run analysis"}
-            </Button>
+      {attempt.analysis ? (
+        <section className="grid gap-4">
+          <Card className="space-y-3">
+            <h2 className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted">High-level impression</h2>
+            <p className="leading-relaxed text-paper-softInk">{attempt.analysis.impression_short}</p>
+          </Card>
+
+          <Card className="space-y-3">
+            <h2 className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted">Blunt analysis</h2>
+            <p className="leading-relaxed text-paper-softInk">{attempt.analysis.impression_long}</p>
+          </Card>
+
+          <Card className="space-y-3">
+            <h2 className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted">Specific red flags</h2>
+            {attempt.analysis.red_flags.length === 0 ? (
+              <p className="text-paper-softInk">No major red flags identified in this run.</p>
+            ) : (
+              <ul className="list-disc space-y-1 pl-6 text-paper-softInk">
+                {attempt.analysis.red_flags.map((flag) => (
+                  <li key={flag}>{flag}</li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card className="space-y-3">
+            <h2 className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted">Number one thing to improve</h2>
+            <p className="leading-relaxed text-paper-softInk">{attempt.analysis.top_improvement}</p>
+          </Card>
+        </section>
+      ) : (
+        <Card className="space-y-4">
+          <h2 className="text-2xl">Analysis in progress</h2>
+          <p className="text-paper-softInk">
+            {attempt.status === "analysis_pending" || loadingAnalysis
+              ? "Generating your report now."
+              : "Analysis has not been generated yet for this attempt."}
+          </p>
+        </Card>
+      )}
+
+      {attempt.script && attempt.transcript.length > 0 ? (
+        <div>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={loadingAnalysis}
+            onClick={async () => {
+              await runAnalysis(attempt.transcript);
+            }}
+          >
+            {loadingAnalysis ? "Analyzing..." : "Re-run analysis"}
+          </Button>
+        </div>
+      ) : null}
+
+      {error ? <Notice tone="error" message={error} /> : null}
+      {attempt.lastError && !error ? <Notice tone="error" message={attempt.lastError} /> : null}
+
+      <section className="space-y-4 border-t border-paper-border/80 pt-6">
+        <h2 className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted">Additional interview data</h2>
+
+        <div className="space-y-3">
+          <Button type="button" variant="ghost" onClick={() => setShowTranscript((current) => !current)}>
+            {showTranscript ? "Hide Transcript [Toggle]" : "Show Transcript [Toggle]"}
+          </Button>
+
+          {showTranscript ? (
+            <Card className="space-y-3">
+              {attempt.transcript.length === 0 ? (
+                <p className="text-paper-softInk">No turns yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {attempt.transcript.map((turn) => (
+                    <div
+                      key={turn.id}
+                      className={`rounded-paper border px-4 py-3 ${
+                        turn.role === "assistant"
+                          ? "border-paper-border bg-paper-bg text-paper-ink"
+                          : "border-paper-accent/40 bg-paper-elevated text-paper-softInk"
+                      }`}
+                    >
+                      <p className="mb-2 font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">
+                        {turn.role === "assistant" ? "Interviewer" : "You"} · {formatDateTime(turn.createdAt)}
+                        {turn.answerDurationSec ? ` · ${turn.answerDurationSec}s` : ""}
+                      </p>
+                      <p className="whitespace-pre-wrap leading-relaxed">{turn.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
           ) : null}
         </div>
 
-        {attempt.analysis ? (
-          <div className="space-y-5">
-            <section className="space-y-2">
-              <h3 className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">Short impression</h3>
-              <p className="leading-relaxed text-paper-softInk">{attempt.analysis.impression_short}</p>
-            </section>
-
-            <section className="space-y-2">
-              <h3 className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">Detailed impression</h3>
-              <p className="leading-relaxed text-paper-softInk">{attempt.analysis.impression_long}</p>
-            </section>
-
-            <section className="space-y-2">
-              <h3 className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">Red flags</h3>
-              {attempt.analysis.red_flags.length === 0 ? (
-                <p className="text-paper-softInk">No major red flags identified in this run.</p>
-              ) : (
-                <ul className="list-disc space-y-1 pl-6 text-paper-softInk">
-                  {attempt.analysis.red_flags.map((flag) => (
-                    <li key={flag}>{flag}</li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className="space-y-2">
-              <h3 className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">Top improvement</h3>
-              <p className="leading-relaxed text-paper-softInk">{attempt.analysis.top_improvement}</p>
-            </section>
-          </div>
-        ) : attempt.status === "analysis_pending" || loadingAnalysis ? (
-          <p className="text-paper-softInk">Analysis in progress...</p>
-        ) : (
-          <p className="text-paper-softInk">Analysis will appear here once generation completes.</p>
-        )}
-
-        {error ? <Notice tone="error" message={error} /> : null}
-        {attempt.lastError && !error ? <Notice tone="error" message={attempt.lastError} /> : null}
-      </Card>
-
-      <Card className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-2xl">Transcript</h2>
-          <Button type="button" variant="ghost" onClick={() => setShowTranscript((current) => !current)}>
-            {showTranscript ? "Hide transcript" : "Show transcript"}
-          </Button>
-        </div>
-
-        {!showTranscript ? (
-          <p className="text-paper-softInk">Hidden by default for quicker scan of final analysis.</p>
-        ) : attempt.transcript.length === 0 ? (
-          <p className="text-paper-softInk">No turns yet.</p>
-        ) : (
+        {canShowScriptToggle ? (
           <div className="space-y-3">
-            {attempt.transcript.map((turn) => (
-              <div
-                key={turn.id}
-                className={`rounded-paper border px-4 py-3 ${
-                  turn.role === "assistant"
-                    ? "border-paper-border bg-paper-bg text-paper-ink"
-                    : "border-paper-accent/40 bg-paper-elevated text-paper-softInk"
-                }`}
-              >
-                <p className="mb-2 font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">
-                  {turn.role === "assistant" ? "Interviewer" : "You"} · {formatDateTime(turn.createdAt)}
-                  {turn.answerDurationSec ? ` · ${turn.answerDurationSec}s` : ""}
-                </p>
-                <p className="whitespace-pre-wrap leading-relaxed">{turn.content}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                const next = !showScript;
+                setShowScript(next);
+                patchDevSettings({ showInterviewerScriptOnConclusion: next });
+              }}
+            >
+              {showScript ? "Hide Interviewer Script [Toggle]" : "Show Interviewer Script [Toggle]"}
+            </Button>
 
-      {store.devSettings.showInterviewerScriptOnConclusion && attempt.script ? (
-        <Card className="space-y-3">
-          <h2 className="text-2xl">Interviewer script</h2>
-          <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-paper border border-paper-border bg-paper-elevated p-4 text-sm leading-relaxed text-paper-softInk">
-            {attempt.script}
-          </pre>
-        </Card>
-      ) : null}
+            {showScript && attempt.script ? (
+              <Card className="space-y-2">
+                <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-paper-softInk">
+                  {attempt.script}
+                </pre>
+              </Card>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+
+      <div className="pt-3">
+        <Link href={`/roles/${role.id}`}>
+          <Button>Return</Button>
+        </Link>
+      </div>
     </main>
   );
 }

@@ -29,6 +29,11 @@ body {
   font-family: var(--font-serif), serif;
 }
 
+body.interview-dark-mode {
+  background: linear-gradient(165deg, #10171d 0%, #0c1218 45%, #0a1016 100%);
+  color: #e8edf4;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -39,4 +44,260 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+.zen-blob-layer {
+  position: absolute;
+  inset: 11%;
+  border-radius: 42% 58% 52% 48% / 46% 40% 60% 54%;
+  background: radial-gradient(circle at 28% 28%, #c6ecff 0%, #75b7dc 38%, #204d6d 100%);
+  transition: transform 120ms ease-out, opacity 140ms ease-out, box-shadow 140ms ease-out;
+  animation: zenBlobMorph 8.8s ease-in-out infinite;
+}
+
+.zen-blob-layer-alt {
+  inset: 19%;
+  border-radius: 56% 44% 48% 52% / 51% 39% 61% 49%;
+  mix-blend-mode: screen;
+  animation-duration: 11.3s;
+  animation-direction: reverse;
+}
+
+.zen-blob-center {
+  position: absolute;
+  inset: 34%;
+  border-radius: 9999px;
+  border: 1px solid rgba(203, 228, 245, 0.55);
+  background: rgba(213, 234, 249, 0.18);
+  backdrop-filter: blur(2px);
+}
+
+.interview-question-text {
+  max-width: min(92vw, 72rem);
+  font-size: clamp(1.7rem, 3.7vw, 3.15rem);
+  line-height: 1.16;
+  text-wrap: balance;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.interview-ambience-base {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(150deg, #10171d 0%, #0f161d 38%, #111a22 72%, #0d1319 100%);
+}
+
+.interview-ambience-layer {
+  position: absolute;
+  inset: -20%;
+  opacity: 0.3;
+  filter: blur(40px);
+  will-change: transform;
+}
+
+.interview-ambience-layer-a {
+  background: radial-gradient(circle at 24% 31%, rgba(123, 159, 165, 0.27) 0%, rgba(123, 159, 165, 0) 64%);
+  animation: interviewAmbienceDrift 24s ease-in-out infinite;
+}
+
+.interview-ambience-layer-b {
+  background: radial-gradient(circle at 75% 67%, rgba(154, 176, 156, 0.24) 0%, rgba(154, 176, 156, 0) 66%);
+  animation: interviewAmbienceDrift 28s ease-in-out infinite reverse;
+}
+
+.interview-ambience-layer-c {
+  background: radial-gradient(circle at 59% 23%, rgba(142, 150, 171, 0.22) 0%, rgba(142, 150, 171, 0) 72%);
+  animation: interviewAmbienceSway 32s ease-in-out infinite;
+}
+
+.interview-shape {
+  position: absolute;
+  opacity: 0.22;
+  filter: blur(10px);
+  will-change: transform, opacity;
+}
+
+.interview-shape-1 {
+  left: 9%;
+  top: 17%;
+  width: 34vw;
+  height: 34vw;
+  min-width: 320px;
+  min-height: 320px;
+  border-radius: 9999px;
+  background: linear-gradient(128deg, rgba(136, 179, 198, 0.34), rgba(136, 179, 198, 0.08));
+  animation: interviewShapeFloatA 108s ease-in-out infinite alternate;
+}
+
+.interview-shape-2 {
+  right: 8%;
+  top: 8%;
+  width: 28vw;
+  height: 28vw;
+  min-width: 260px;
+  min-height: 260px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 33% 32%, rgba(159, 187, 169, 0.31), rgba(159, 187, 169, 0.07) 68%);
+  animation: interviewShapeFloatB 122s ease-in-out infinite alternate;
+}
+
+.interview-shape-3 {
+  left: 6%;
+  bottom: -4%;
+  width: 30vw;
+  height: 30vw;
+  min-width: 280px;
+  min-height: 280px;
+  border-radius: 9999px;
+  background: linear-gradient(142deg, rgba(129, 161, 187, 0.3), rgba(129, 161, 187, 0.08));
+  animation: interviewShapeFloatC 116s ease-in-out infinite alternate;
+}
+
+.interview-shape-4 {
+  right: 14%;
+  bottom: 10%;
+  width: 22vw;
+  height: 22vw;
+  min-width: 220px;
+  min-height: 220px;
+  border-radius: 9999px;
+  background: linear-gradient(164deg, rgba(132, 168, 158, 0.29), rgba(132, 168, 158, 0.07));
+  animation: interviewShapeFloatA 134s ease-in-out infinite alternate-reverse;
+}
+
+.interview-shape-5 {
+  left: 44%;
+  top: -8%;
+  width: 24vw;
+  height: 24vw;
+  min-width: 230px;
+  min-height: 230px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%, rgba(145, 159, 191, 0.29), rgba(145, 159, 191, 0.07) 66%);
+  animation: interviewShapeFloatB 142s ease-in-out infinite alternate-reverse;
+}
+
+.interview-support-enter {
+  animation: interviewSupportFadeIn 620ms ease forwards;
+}
+
+@keyframes interviewAmbienceDrift {
+  0% {
+    transform: translate3d(-3%, -2%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(3.5%, 2.4%, 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(-3%, -2%, 0) scale(1);
+  }
+}
+
+@keyframes interviewAmbienceSway {
+  0% {
+    transform: translate3d(2.1%, -2.2%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-2.8%, 2.8%, 0) scale(1.07);
+  }
+  100% {
+    transform: translate3d(2.1%, -2.2%, 0) scale(1);
+  }
+}
+
+@keyframes interviewShapeFloatA {
+  0% {
+    opacity: 0.18;
+    transform: translate3d(-12vw, -8vh, 0) rotate(-4deg) scale(0.95);
+  }
+  25% {
+    opacity: 0.28;
+    transform: translate3d(12vw, -2vh, 0) rotate(1deg) scale(1.01);
+  }
+  50% {
+    opacity: 0.32;
+    transform: translate3d(28vw, 12vh, 0) rotate(7deg) scale(1.06);
+  }
+  75% {
+    opacity: 0.24;
+    transform: translate3d(4vw, 22vh, 0) rotate(2deg) scale(1.02);
+  }
+  100% {
+    opacity: 0.2;
+    transform: translate3d(-14vw, 8vh, 0) rotate(-3deg) scale(0.97);
+  }
+}
+
+@keyframes interviewShapeFloatB {
+  0% {
+    opacity: 0.18;
+    transform: translate3d(14vw, -10vh, 0) rotate(3deg) scale(0.96);
+  }
+  25% {
+    opacity: 0.26;
+    transform: translate3d(-2vw, -1vh, 0) rotate(-1deg) scale(1.01);
+  }
+  50% {
+    opacity: 0.31;
+    transform: translate3d(-24vw, 14vh, 0) rotate(-7deg) scale(1.08);
+  }
+  75% {
+    opacity: 0.24;
+    transform: translate3d(-8vw, 24vh, 0) rotate(-3deg) scale(1.03);
+  }
+  100% {
+    opacity: 0.2;
+    transform: translate3d(12vw, 6vh, 0) rotate(2deg) scale(0.99);
+  }
+}
+
+@keyframes interviewShapeFloatC {
+  0% {
+    opacity: 0.19;
+    transform: translate3d(-10vw, 14vh, 0) rotate(-3deg) scale(0.95);
+  }
+  25% {
+    opacity: 0.27;
+    transform: translate3d(4vw, 2vh, 0) rotate(0deg) scale(1);
+  }
+  50% {
+    opacity: 0.32;
+    transform: translate3d(24vw, -12vh, 0) rotate(7deg) scale(1.07);
+  }
+  75% {
+    opacity: 0.25;
+    transform: translate3d(10vw, 4vh, 0) rotate(1deg) scale(1.02);
+  }
+  100% {
+    opacity: 0.2;
+    transform: translate3d(-12vw, 20vh, 0) rotate(-2deg) scale(0.98);
+  }
+}
+
+@keyframes interviewSupportFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes zenBlobMorph {
+  0% {
+    border-radius: 42% 58% 52% 48% / 46% 40% 60% 54%;
+    transform: translate3d(-1%, -1%, 0) rotate(0deg);
+  }
+  50% {
+    border-radius: 58% 42% 44% 56% / 37% 62% 38% 63%;
+    transform: translate3d(1.5%, 2%, 0) rotate(5deg);
+  }
+  100% {
+    border-radius: 42% 58% 52% 48% / 46% 40% 60% 54%;
+    transform: translate3d(-1%, -1%, 0) rotate(0deg);
+  }
 }
