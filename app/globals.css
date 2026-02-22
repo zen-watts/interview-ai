@@ -387,3 +387,30 @@ textarea {
     transform: translate3d(-1%, -1%, 0) rotate(0deg);
   }
 }
+
+@property --border-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.card-glow-border {
+  border: 2px solid transparent !important;
+  background:
+    linear-gradient(var(--paper-elevated), var(--paper-elevated)) padding-box,
+    conic-gradient(
+      from var(--border-angle),
+      var(--paper-border),
+      var(--paper-accent),
+      var(--paper-soft-ink),
+      var(--paper-accent),
+      var(--paper-border)
+    ) border-box;
+  animation: spinBorder 3s linear infinite;
+}
+
+@keyframes spinBorder {
+  to {
+    --border-angle: 360deg;
+  }
+}
