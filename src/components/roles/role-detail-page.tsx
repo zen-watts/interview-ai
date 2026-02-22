@@ -55,6 +55,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
   const [attemptOpen, setAttemptOpen] = useState(false);
   const [attemptLoading, setAttemptLoading] = useState(false);
   const [attemptError, setAttemptError] = useState<string | null>(null);
+  const [creatingAttemptId, setCreatingAttemptId] = useState<string | null>(null);
 
   const role = useMemo(() => store.roles.find((item) => item.id === roleId) ?? null, [store.roles, roleId]);
   const attempts = useMemo(() => {
@@ -72,6 +73,27 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
           <Link href="/">
             <Button>Back to home</Button>
           </Link>
+        </Card>
+      </main>
+    );
+  }
+
+  if (attemptLoading && creatingAttemptId) {
+    return (
+      <main className="page-enter flex min-h-[72vh] items-center justify-center">
+        <Card className="w-full max-w-2xl space-y-5">
+          <p className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted">Preparing interview session</p>
+          <h1 className="text-3xl leading-tight">Generating your interviewer script</h1>
+          <p className="text-paper-softInk">
+            Building a custom session for <span className="text-paper-ink">{role.title}</span>. You&apos;ll be taken to the
+            interview start screen as soon as it&apos;s ready.
+          </p>
+          <div className="h-2 overflow-hidden rounded-paper border border-paper-border bg-paper-elevated">
+            <div className="h-full w-1/2 animate-pulse bg-paper-accent/45" />
+          </div>
+          <p className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted">
+            <span className="loading-dots">Generating</span>
+          </p>
         </Card>
       </main>
     );
@@ -191,6 +213,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
 
               const attempt = createAttempt(role.id, config);
               setAttemptOpen(false);
+              setCreatingAttemptId(attempt.id);
 
               try {
                 const script = await requestInterviewScript({
@@ -199,12 +222,16 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
                   config,
                 });
                 setAttemptScript(attempt.id, script);
+                router.push(`/roles/${role.id}/attempts/${attempt.id}`);
               } catch (error) {
                 const message = error instanceof Error ? error.message : "Failed to generate script.";
                 setAttemptStatus(attempt.id, "error", message);
                 patchAttempt(attempt.id, {
                   script: null,
                 });
+                setAttemptError(message);
+                setCreatingAttemptId(null);
+                setAttemptOpen(true);
               } finally {
                 setAttemptLoading(false);
               }
