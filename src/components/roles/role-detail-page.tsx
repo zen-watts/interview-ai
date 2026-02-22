@@ -88,9 +88,6 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
             Building a custom session for <span className="text-paper-ink">{role.title}</span>. You&apos;ll be taken to the
             interview start screen as soon as it&apos;s ready.
           </p>
-          <div className="h-2 overflow-hidden rounded-paper border border-paper-border bg-paper-elevated">
-            <div className="h-full w-1/2 animate-pulse bg-paper-accent/45" />
-          </div>
           <p className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted">
             <span className="loading-dots">Generating</span>
           </p>
@@ -214,6 +211,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
               const attempt = createAttempt(role.id, config);
               setAttemptOpen(false);
               setCreatingAttemptId(attempt.id);
+              let shouldResetLoading = true;
 
               try {
                 const script = await requestInterviewScript({
@@ -222,7 +220,8 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
                   config,
                 });
                 setAttemptScript(attempt.id, script);
-                router.push(`/roles/${role.id}/attempts/${attempt.id}`);
+                shouldResetLoading = false;
+                router.replace(`/roles/${role.id}/attempts/${attempt.id}`);
               } catch (error) {
                 const message = error instanceof Error ? error.message : "Failed to generate script.";
                 setAttemptStatus(attempt.id, "error", message);
@@ -233,7 +232,9 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
                 setCreatingAttemptId(null);
                 setAttemptOpen(true);
               } finally {
-                setAttemptLoading(false);
+                if (shouldResetLoading) {
+                  setAttemptLoading(false);
+                }
               }
             }}
           />
