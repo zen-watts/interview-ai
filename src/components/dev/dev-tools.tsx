@@ -8,6 +8,7 @@ import { STORAGE_KEY } from "@/src/lib/storage/schema";
 export function DevTools() {
   const [open, setOpen] = useState(false);
   const { store, patchDevSettings } = useAppStore();
+  const showScriptOnConclusion = store.devSettings?.showInterviewerScriptOnConclusion ?? false;
 
   const resetAppData = () => {
     window.localStorage.removeItem(STORAGE_KEY);
@@ -37,11 +38,11 @@ export function DevTools() {
             className="w-full rounded-paper border border-paper-border px-3 py-2 text-left text-sm text-paper-softInk transition hover:border-paper-accent hover:text-paper-ink"
             onClick={() =>
               patchDevSettings({
-                showInterviewerScriptOnConclusion: !store.devSettings.showInterviewerScriptOnConclusion,
+                showInterviewerScriptOnConclusion: !showScriptOnConclusion,
               })
             }
           >
-            {store.devSettings.showInterviewerScriptOnConclusion
+            {showScriptOnConclusion
               ? "Hide interviewer script on conclusion"
               : "Show interviewer script on conclusion"}
           </button>

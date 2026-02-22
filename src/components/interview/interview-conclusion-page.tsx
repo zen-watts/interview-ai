@@ -318,7 +318,7 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
             </p>
           </Card>
 
-          {store.devSettings.showInterviewerScriptOnConclusion && attempt.script ? (
+          {store.devSettings?.showInterviewerScriptOnConclusion && attempt.script ? (
             <Card className="space-y-3">
               <h2 className="text-2xl font-semibold text-paper-ink">Interviewer script</h2>
               <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-paper border border-paper-border bg-paper-elevated p-4 text-sm leading-relaxed text-paper-softInk">

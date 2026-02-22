@@ -3,7 +3,6 @@ import { Inter, Source_Serif_4 } from "next/font/google";
 import type { ReactNode } from "react";
 
 import "@/app/globals.css";
-import { DevTools } from "@/src/components/dev/dev-tools";
 import { AppBreadcrumbs } from "@/src/components/navigation/app-breadcrumbs";
 import { AppStoreProvider } from "@/src/components/providers/app-store-provider";
 
@@ -35,7 +34,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <AppBreadcrumbs />
             {children}
           </div>
-          {process.env.NODE_ENV !== "production" ? <DevTools /> : null}
         </AppStoreProvider>
       </body>
     </html>

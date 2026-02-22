@@ -23,7 +23,7 @@ export function AudioReactiveBlob({
 
   return (
     <div
-      className={cn("relative h-[28rem] w-[28rem]", className)}
+      className={cn("relative h-[21rem] w-[21rem]", className)}
       style={{
         filter: `drop-shadow(0 0 ${glowRadius}px rgba(152, 227, 255, ${glowOpacity}))`,
       }}

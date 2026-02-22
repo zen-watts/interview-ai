@@ -399,7 +399,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-    return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
+  return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
 }
 
 export function useAppStore() {

@@ -299,6 +299,7 @@ export function OnboardingFlow() {
                 </div>
               </div>
 
+              {statusMessage ? <Notice message={statusMessage} tone="neutral" /> : null}
               {error ? <Notice message={error} tone="error" /> : null}
             </div>
           ) : null}

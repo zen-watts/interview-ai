@@ -120,7 +120,7 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
                   attempt.id === newlyCreatedAttemptId && "card-glow-border"
                 )}>
                   <div className="space-y-1">
-                    <h3 className="text-xl">{attempt.config.categories.join(" · ")}</h3>
+                    <h3 className="text-xl">{attempt.config.category}</h3>
                     <p className="font-sans text-xs uppercase tracking-[0.1em] text-paper-muted">
                       {attempt.config.primaryQuestionCount} primary questions
                     </p>
