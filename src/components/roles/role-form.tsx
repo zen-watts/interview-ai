@@ -32,7 +32,7 @@ export function RoleForm({
   initialValues: RoleFormValues;
   submitLabel: string;
   onSubmit: (values: RoleFormValues) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
   extraActions?: ReactNode;
 }) {
   const [values, setValues] = useState<RoleFormValues>(initialValues);
@@ -121,9 +121,11 @@ export function RoleForm({
           <Button type="submit" disabled={!canSubmit}>
             {submitLabel}
           </Button>
-          <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancel
-          </Button>
+          {onCancel ? (
+            <Button type="button" variant="ghost" onClick={onCancel}>
+              Cancel
+            </Button>
+          ) : null}
         </div>
         {extraActions ? <div className="flex items-center">{extraActions}</div> : null}
       </div>

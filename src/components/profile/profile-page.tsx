@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -32,7 +32,16 @@ function toDraft(profile: UserProfile): ProfileDraft {
   };
 }
 
-export function ProfilePage() {
+interface ProfileFormState {
+  profile: UserProfile | null;
+  form: ProfileDraft | null;
+  error: string | null;
+  isDirty: boolean;
+  setForm: Dispatch<SetStateAction<ProfileDraft | null>>;
+  handleSave: () => void;
+}
+
+function useProfileForm(): ProfileFormState {
   const { store, saveProfile } = useAppStore();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -45,21 +54,18 @@ export function ProfilePage() {
     setForm(toDraft(store.profile));
   }, [store.profile]);
 
-  if (!store.profile || !form) {
-    return (
-      <main className="space-y-6">
-        <Card className="space-y-3">
-          <h1 className="text-3xl">Profile not found</h1>
-          <p className="text-paper-softInk">Complete onboarding to create your profile.</p>
-          <Link href="/">
-            <Button>Go to role practice</Button>
-          </Link>
-        </Card>
-      </main>
-    );
-  }
+  const profile = store.profile;
+  const isDirty =
+    Boolean(profile && form) &&
+    (form.name.trim() !== profile.name ||
+      form.age.trim() !== (profile.age ? String(profile.age) : "") ||
+      form.pronouns.trim() !== profile.pronouns ||
+      form.resumeSummary.trim() !== profile.resumeSummary);
 
   const handleSave = () => {
+    if (!profile || !form || !isDirty) {
+      return;
+    }
     setError(null);
     const normalizedAge = form.age.trim();
     let parsedAge: number | null = null;
@@ -80,11 +86,11 @@ export function ProfilePage() {
 
     saveProfile({
       name: form.name.trim(),
-      targetJob: store.profile?.targetJob || "Defined per role",
-      experienceLevel: store.profile?.experienceLevel || "new_grad",
+      targetJob: profile.targetJob || "Defined per role",
+      experienceLevel: profile.experienceLevel || "new_grad",
       age: parsedAge,
       pronouns: form.pronouns.trim(),
-      resumeText: store.profile?.resumeText || "",
+      resumeText: profile.resumeText || "",
       resumeSummary: form.resumeSummary.trim(),
     });
 
@@ -95,6 +101,140 @@ export function ProfilePage() {
 
     router.push("/");
   };
+
+  return {
+    profile,
+    form,
+    error,
+    isDirty,
+    setForm,
+    handleSave,
+  };
+}
+
+function ProfileFormFields({
+  form,
+  setForm,
+  error,
+  isDirty,
+  onSave,
+  showTitle,
+}: {
+  form: ProfileDraft;
+  setForm: Dispatch<SetStateAction<ProfileDraft | null>>;
+  error: string | null;
+  isDirty: boolean;
+  onSave: () => void;
+  showTitle: boolean;
+}) {
+  const updateField = (field: keyof ProfileDraft, value: string) => {
+    setForm((current) => (current ? { ...current, [field]: value } : current));
+  };
+
+  return (
+    <div className="space-y-6">
+      {showTitle ? (
+        <div className="space-y-1">
+          <h1 className="text-3xl leading-tight">Profile</h1>
+          <p className="text-paper-softInk">Update the details that personalize your interviews.</p>
+        </div>
+      ) : (
+        <p className="text-paper-softInk">Update the details that personalize your interviews.</p>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="profile-name">Name</Label>
+        <Input
+          id="profile-name"
+          value={form.name}
+          onChange={(event) => updateField("name", event.target.value)}
+          placeholder="Jane Candidate"
+        />
+      </div>
+
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="profile-age">Age (optional)</Label>
+          <Input
+            id="profile-age"
+            type="number"
+            min={1}
+            max={120}
+            inputMode="numeric"
+            value={form.age}
+            onChange={(event) => updateField("age", event.target.value)}
+            placeholder="29"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="profile-pronouns">Pronouns (optional)</Label>
+          <Input
+            id="profile-pronouns"
+            value={form.pronouns}
+            onChange={(event) => updateField("pronouns", event.target.value)}
+            placeholder="she/her, he/him, they/them"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="resume-summary">Resume context summary</Label>
+        <Textarea
+          id="resume-summary"
+          value={form.resumeSummary}
+          onChange={(event) => updateField("resumeSummary", event.target.value)}
+          rows={4}
+          placeholder="Optional summary used to personalize interviews"
+        />
+      </div>
+
+      {error ? <Notice message={error} tone="error" /> : null}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" onClick={onSave} disabled={!isDirty}>
+          Save profile
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function ProfileModalContent() {
+  const { profile, form, error, isDirty, setForm, handleSave } = useProfileForm();
+
+  if (!profile || !form) {
+    return null;
+  }
+
+  return (
+    <ProfileFormFields
+      form={form}
+      setForm={setForm}
+      error={error}
+      isDirty={isDirty}
+      onSave={handleSave}
+      showTitle={false}
+    />
+  );
+}
+
+export function ProfilePage() {
+  const { profile, form, error, isDirty, setForm, handleSave } = useProfileForm();
+
+  if (!profile || !form) {
+    return (
+      <main className="space-y-6">
+        <Card className="space-y-3">
+          <h1 className="text-3xl">Profile not found</h1>
+          <p className="text-paper-softInk">Complete onboarding to create your profile.</p>
+          <Link href="/">
+            <Button>Go to role dashboard</Button>
+          </Link>
+        </Card>
+      </main>
+    );
+  }
 
   return (
     <main className="space-y-8">
@@ -116,75 +256,20 @@ export function ProfilePage() {
               clipRule="evenodd"
             />
           </svg>
-          Role Practice
+          Role Dashboard
         </Link>
       </header>
 
       <div className="flex justify-center">
         <Card className="w-full max-w-3xl space-y-6 p-8 md:p-10">
-          <div className="space-y-1">
-            <h1 className="text-3xl leading-tight">Profile</h1>
-            <p className="text-paper-softInk">Update the details that personalize your interviews.</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="profile-name">Name</Label>
-            <Input
-              id="profile-name"
-              value={form.name}
-              onChange={(event) => setForm((current) => (current ? { ...current, name: event.target.value } : current))}
-              placeholder="Jane Candidate"
-            />
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="profile-age">Age (optional)</Label>
-              <Input
-                id="profile-age"
-                type="number"
-                min={1}
-                max={120}
-                inputMode="numeric"
-                value={form.age}
-                onChange={(event) => setForm((current) => (current ? { ...current, age: event.target.value } : current))}
-                placeholder="29"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="profile-pronouns">Pronouns (optional)</Label>
-              <Input
-                id="profile-pronouns"
-                value={form.pronouns}
-                onChange={(event) =>
-                  setForm((current) => (current ? { ...current, pronouns: event.target.value } : current))
-                }
-                placeholder="she/her, he/him, they/them"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="resume-summary">Resume context summary</Label>
-            <Textarea
-              id="resume-summary"
-              value={form.resumeSummary}
-              onChange={(event) =>
-                setForm((current) => (current ? { ...current, resumeSummary: event.target.value } : current))
-              }
-              rows={4}
-              placeholder="Optional summary used to personalize interviews"
-            />
-          </div>
-
-          {error ? <Notice message={error} tone="error" /> : null}
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" onClick={handleSave}>
-              Save profile
-            </Button>
-          </div>
+          <ProfileFormFields
+            form={form}
+            setForm={setForm}
+            error={error}
+            isDirty={isDirty}
+            onSave={handleSave}
+            showTitle
+          />
         </Card>
       </div>
     </main>

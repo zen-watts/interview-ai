@@ -28,7 +28,7 @@ export function HomePage() {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <p className="font-sans text-xs uppercase tracking-[0.14em] text-paper-muted">Inner View</p>
-          <h1 className="text-4xl leading-tight md:text-5xl">Role Practice</h1>
+          <h1 className="text-4xl leading-tight md:text-5xl">Role Dashboard</h1>
           <p className="max-w-2xl text-paper-softInk">
             Build a role profile, generate an interviewer script, and practice realistic conversations.
           </p>
@@ -117,7 +117,7 @@ export function HomePage() {
       )}
 
       {isCreateOpen ? (
-        <Modal title="Create role" onClose={() => setIsCreateOpen(false)}>
+        <Modal title="New Role" onClose={() => setIsCreateOpen(false)}>
           <RoleForm
             initialValues={emptyRoleFormValues}
             submitLabel="Save role"
@@ -125,7 +125,6 @@ export function HomePage() {
               createRole(values);
               setIsCreateOpen(false);
             }}
-            onCancel={() => setIsCreateOpen(false)}
           />
         </Modal>
       ) : null}
