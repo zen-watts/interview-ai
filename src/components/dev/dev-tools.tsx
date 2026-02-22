@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { useAppStore } from "@/src/components/providers/app-store-provider";
 import { STORAGE_KEY } from "@/src/lib/storage/schema";
@@ -125,8 +124,7 @@ function buildMockAnalysis(): InterviewAnalysis {
 
 export function DevTools() {
   const [open, setOpen] = useState(false);
-  const { store, patchDevSettings, patchAttempt } = useAppStore();
-  const router = useRouter();
+  const { store, patchDevSettings } = useAppStore();
   const showScriptOnConclusion = store.devSettings?.showInterviewerScriptOnConclusion ?? false;
 
   const resetAppData = () => {
@@ -163,11 +161,10 @@ export function DevTools() {
       id: createId(),
       roleId: role.id,
       config: {
-        temperament: 40,
-        questionDifficulty: 55,
-        followUpIntensity: 50,
+        personaIntensity: 4,
+        followUpIntensity: 5,
         primaryQuestionCount: 4,
-        categories: ["Strictly Behavioral"],
+        category: "Strictly Behavioral",
         notes: "",
       },
       status: "complete",

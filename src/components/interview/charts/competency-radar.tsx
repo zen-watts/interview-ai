@@ -21,7 +21,7 @@ function hexPath(cx: number, cy: number, r: number, count: number): string {
     .join(" ") + " Z";
 }
 
-function labelAnchor(angleDeg: number): { textAnchor: string; dx: number; dy: number } {
+function labelAnchor(angleDeg: number): { textAnchor: "start" | "middle" | "end"; dx: number; dy: number } {
   const a = ((angleDeg % 360) + 360) % 360;
   if (a < 10 || a > 350) return { textAnchor: "middle", dx: 0, dy: -8 };
   if (a >= 10 && a < 170) return { textAnchor: "start", dx: 6, dy: a > 90 ? 12 : 4 };
