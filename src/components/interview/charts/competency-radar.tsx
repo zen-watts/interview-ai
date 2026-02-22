@@ -53,8 +53,8 @@ export function CompetencyRadar({ competencies }: CompetencyRadarProps) {
           key={`ring-${level}`}
           d={hexPath(CX, CY, ((level + 1) / LEVELS) * MAX_R, count)}
           fill="none"
-          stroke="var(--paper-border)"
-          strokeWidth={0.5}
+          stroke="black"
+          strokeWidth={0.75}
           opacity={0.35}
         />
       ))}
@@ -69,9 +69,9 @@ export function CompetencyRadar({ competencies }: CompetencyRadarProps) {
             y1={CY}
             x2={x}
             y2={y}
-            stroke="var(--paper-border)"
-            strokeWidth={0.5}
-            opacity={0.4}
+            stroke="black"
+            strokeWidth={0.75}
+            opacity={0.35}
           />
         );
       })}
