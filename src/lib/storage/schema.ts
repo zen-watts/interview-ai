@@ -53,14 +53,14 @@ const roleSchema = z.object({
 });
 
 const configSchema = z.object({
-  temperament: z.number().min(0).max(100).default(25),
-  questionDifficulty: z.number().min(0).max(100).default(25),
   personaIntensity: z.number().min(0).max(100).optional(),
-  followUpIntensity: z.number().min(0).max(100),
-  primaryQuestionCount: z.number().min(1).max(10),
-  categories: z.array(z.enum(interviewCategoryValues)).min(1).default(["Strictly Behavioral"]),
-  category: z.enum(["Strictly Behavioral", "Mix", "Technical Concepts", "Unhinged"]).optional(),
-  notes: z.string(),
+  followUpIntensity: z.number().min(0).max(100).default(4),
+  primaryQuestionCount: z.number().min(1).max(10).default(4),
+  category: z.enum(interviewCategoryValues).optional(),
+  notes: z.string().default(""),
+  temperament: z.number().min(0).max(100).optional(),
+  questionDifficulty: z.number().min(0).max(100).optional(),
+  categories: z.array(z.enum(interviewCategoryValues)).min(1).optional(),
 });
 
 const transcriptTurnSchema = z.object({
@@ -114,6 +114,43 @@ const appStoreV2Schema = z.object({
 
 export const appStoreSchema = appStoreV2Schema;
 
+function normalizeInterviewCategory(input: {
+  category?: (typeof interviewCategoryValues)[number];
+  categories?: (typeof interviewCategoryValues)[number][];
+}) {
+  if (input.category) {
+    return input.category;
+  }
+
+  const categories = input.categories ?? [];
+  if (categories.length === 0) {
+    return "Strictly Behavioral" as const;
+  }
+
+  if (categories.includes("Unhinged")) {
+    return "Unhinged" as const;
+  }
+
+  if (categories.includes("Strictly Behavioral") && categories.includes("Technical Concepts")) {
+    return "Mix" as const;
+  }
+
+  return categories[0];
+}
+
+function normalizeAttemptConfig(config: z.infer<typeof configSchema>) {
+  return {
+    personaIntensity: config.personaIntensity ?? config.temperament ?? 3,
+    followUpIntensity: config.followUpIntensity,
+    primaryQuestionCount: config.primaryQuestionCount,
+    category: normalizeInterviewCategory({
+      category: config.category,
+      categories: config.categories,
+    }),
+    notes: config.notes,
+  };
+}
+
 export function createEmptyStore(): AppStore {
   return {
     schemaVersion: 2 as const,
@@ -151,6 +188,10 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
           ...role,
           isFavorited: role.isFavorited ?? false,
         })),
+        attempts: parsed.data.attempts.map((attempt) => ({
+          ...attempt,
+          config: normalizeAttemptConfig(attempt.config),
+        })),
         devSettings: parsed.data.devSettings,
       };
     }
@@ -182,7 +223,10 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
           createdAt: role.createdAt,
           updatedAt: role.updatedAt,
         })),
-        attempts: v1.attempts,
+        attempts: v1.attempts.map((attempt) => ({
+          ...attempt,
+          config: normalizeAttemptConfig(attempt.config),
+        })),
         devSettings: {
           showInterviewerScriptOnConclusion: false,
         },

@@ -30,11 +30,59 @@ const EMPTY_RESPONSE_ERROR = "Please respond before finishing this turn.";
 
 type InterviewVisualPhase = "intro" | "transition" | "active" | "complete";
 
+function splitAssistantTurnContent(content: string) {
+  const raw = content.trim();
+  if (!raw) {
+    return { response: "", question: "" };
+  }
+
+  const lines = raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const responseLine = lines.find((line) => /^response:/i.test(line));
+  const questionLine = lines.find((line) => /^question:/i.test(line));
+
+  if (questionLine) {
+    return {
+      response: responseLine ? responseLine.replace(/^response:\s*/i, "").trim() : "",
+      question: questionLine.replace(/^question:\s*/i, "").trim(),
+    };
+  }
+
+  const paragraphs = raw
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (paragraphs.length >= 2) {
+    return {
+      response: paragraphs.slice(0, -1).join("\n\n"),
+      question: paragraphs[paragraphs.length - 1],
+    };
+  }
+
+  return { response: "", question: raw };
+}
+
 function findLatestAssistantQuestion(transcript: TranscriptTurn[]) {
   for (let index = transcript.length - 1; index >= 0; index -= 1) {
     const turn = transcript[index];
     if (turn.role === "assistant") {
-      return turn.content;
+      const parsed = splitAssistantTurnContent(turn.content);
+      return parsed.question || turn.content;
+    }
+  }
+
+  return "";
+}
+
+function findLatestAssistantResponse(transcript: TranscriptTurn[]) {
+  for (let index = transcript.length - 1; index >= 0; index -= 1) {
+    const turn = transcript[index];
+    if (turn.role === "assistant") {
+      const parsed = splitAssistantTurnContent(turn.content);
+      return parsed.response;
     }
   }
 
@@ -72,6 +120,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
   const [loadingTurn, setLoadingTurn] = useState(false);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [phase, setPhase] = useState<InterviewVisualPhase>("intro");
+  const [responseText, setResponseText] = useState("");
   const [questionText, setQuestionText] = useState("");
   const [visibleQuestionText, setVisibleQuestionText] = useState("");
   const [questionVisible, setQuestionVisible] = useState(false);
@@ -265,8 +314,10 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     }
 
     const latestStoredQuestion = findLatestAssistantQuestion(attempt.transcript);
+    const latestStoredResponse = findLatestAssistantResponse(attempt.transcript);
 
     if (latestStoredQuestion) {
+      setResponseText(latestStoredResponse);
       setQuestionText(latestStoredQuestion);
       setVisibleQuestionText(latestStoredQuestion);
       setTypingInProgress(false);
@@ -373,6 +424,12 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     };
   }, []);
 
+  useEffect(() => {
+    if (!interviewerVoiceEnabled) {
+      cancelInterviewerSpeech();
+    }
+  }, [cancelInterviewerSpeech, interviewerVoiceEnabled]);
+
   if (!role || !attempt) {
     return (
       <main className="space-y-6">
@@ -389,21 +446,15 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
 
   const organizationName = normalizeOrganizationName(role.organizationDescription);
   const voiceUnavailable = !speechSupported || Boolean(speechError);
-  const questionSizeClass = useMemo(() => {
-    const contentLength = questionText.trim().length || visibleQuestionText.trim().length;
+  const questionContentLength = questionText.trim().length || visibleQuestionText.trim().length;
+  const questionSizeClass =
+    questionContentLength >= 260
+      ? "interview-question-text-compact"
+      : questionContentLength >= 170
+        ? "interview-question-text-balanced"
+        : "";
 
-    if (contentLength >= 260) {
-      return "interview-question-text-compact";
-    }
-
-    if (contentLength >= 170) {
-      return "interview-question-text-balanced";
-    }
-
-    return "";
-  }, [questionText, visibleQuestionText]);
-
-  const typeQuestion = useCallback(async (question: string) => {
+  const typeQuestion = async (question: string) => {
     if (typingTimerRef.current) {
       window.clearInterval(typingTimerRef.current);
       typingTimerRef.current = null;
@@ -450,7 +501,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     if (typingRunRef.current === runId) {
       setTypingInProgress(false);
     }
-  }, []);
+  };
 
   const runAnalysis = async (transcript: TranscriptTurn[]) => {
     if (!attempt.script) {
@@ -487,154 +538,162 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     }
   };
 
-  const showNextQuestion = useCallback(
-    async (question: string) => {
-      setForegroundVisible(false);
-      setQuestionVisible(false);
-      setPhase("transition");
+  const showNextQuestion = async (response: string, question: string) => {
+    setForegroundVisible(false);
+    setQuestionVisible(false);
+    setPhase("transition");
 
-      await delay(QUESTION_FADE_MS);
+    await delay(QUESTION_FADE_MS);
 
-      setQuestionText(question);
-      setVisibleQuestionText("");
-      setQuestionElapsedSec(0);
-      setQuestionCycle((current) => current + 1);
-      setQuestionVisible(true);
-      setPhase("active");
-      await Promise.all([typeQuestion(question), playInterviewerSpeech(question)]);
-      setForegroundVisible(true);
+    setResponseText(response.trim());
+    setQuestionText(question);
+    setVisibleQuestionText("");
+    setQuestionElapsedSec(0);
+    setQuestionCycle((current) => current + 1);
+    setQuestionVisible(true);
+    setPhase("active");
+    await Promise.all([typeQuestion(question), playInterviewerSpeech(question)]);
+    setForegroundVisible(true);
 
-      logger.info("interview.question.displayed", {
-        attemptId: attempt.id,
-        questionLength: question.length,
-      });
-    },
-    [attempt.id, playInterviewerSpeech, typeQuestion],
-  );
+    logger.info("interview.question.displayed", {
+      attemptId: attempt.id,
+      responseLength: response.length,
+      questionLength: question.length,
+    });
+  };
 
-  const completeInterview = useCallback(
-    async (transcript: TranscriptTurn[]) => {
-      if (completionStartedRef.current) {
-        return;
-      }
+  const completeInterview = async (transcript: TranscriptTurn[]) => {
+    if (completionStartedRef.current) {
+      return;
+    }
 
-      completionStartedRef.current = true;
-      typingRunRef.current += 1;
+    completionStartedRef.current = true;
+    typingRunRef.current += 1;
 
-      if (typingTimerRef.current) {
-        window.clearInterval(typingTimerRef.current);
-        typingTimerRef.current = null;
-      }
+    if (typingTimerRef.current) {
+      window.clearInterval(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
 
-      if (speechListening) {
-        stopSpeech();
-      }
+    if (speechListening) {
+      stopSpeech();
+    }
 
-      cancelInterviewerSpeech();
-      resetAnswerDraft();
-      setQuestionText("");
-      setVisibleQuestionText("");
-      setTypingInProgress(false);
-      setForegroundVisible(false);
-      setQuestionVisible(false);
-      setPhase("complete");
+    cancelInterviewerSpeech();
+    resetAnswerDraft();
+    setResponseText("");
+    setQuestionText("");
+    setVisibleQuestionText("");
+    setTypingInProgress(false);
+    setForegroundVisible(false);
+    setQuestionVisible(false);
+    setPhase("complete");
 
-      logger.info("interview.completed", {
+    logger.info("interview.completed", {
+      attemptId: attempt.id,
+      transcriptLength: transcript.length,
+    });
+
+    await delay(COMPLETE_SCENE_MS);
+    await runAnalysis(transcript);
+
+    router.replace(`/roles/${roleId}/attempts/${attemptId}/conclusion`);
+  };
+
+  const requestNextTurn = async (transcript: TranscriptTurn[]) => {
+    if (!attempt.script) {
+      setError("Interviewer script is missing.");
+      return;
+    }
+
+    setLoadingTurn(true);
+    setError(null);
+
+    try {
+      logger.info("interview.turn.request.started", {
         attemptId: attempt.id,
         transcriptLength: transcript.length,
       });
 
-      await delay(COMPLETE_SCENE_MS);
-      await runAnalysis(transcript);
+      const next = await requestInterviewTurn({
+        script: attempt.script,
+        transcript,
+        primaryQuestionCount: attempt.config.primaryQuestionCount,
+      });
 
-      router.replace(`/roles/${roleId}/attempts/${attemptId}/conclusion`);
-    },
-    [attempt.id, attemptId, cancelInterviewerSpeech, resetAnswerDraft, roleId, router, runAnalysis, speechListening, stopSpeech],
-  );
+      const response = next.response.trim();
+      const question = next.question.trim();
 
-  const requestNextTurn = useCallback(
-    async (transcript: TranscriptTurn[]) => {
-      if (!attempt.script) {
-        setError("Interviewer script is missing.");
-        return;
-      }
+      if (next.isEnd || question === END_TOKEN) {
+        let transcriptForCompletion = transcript;
 
-      setLoadingTurn(true);
-      setError(null);
-
-      try {
-        logger.info("interview.turn.request.started", {
-          attemptId: attempt.id,
-          transcriptLength: transcript.length,
-        });
-
-        const next = await requestInterviewTurn({
-          script: attempt.script,
-          transcript,
-          primaryQuestionCount: attempt.config.primaryQuestionCount,
-        });
-
-        const nextMessage = next.message.trim();
-        if (next.isEnd || nextMessage === END_TOKEN) {
-          await completeInterview(transcript);
-          return;
+        if (response) {
+          const endAssistantTurn: TranscriptTurn = {
+            id: createId(),
+            role: "assistant",
+            content: response,
+            createdAt: nowIso(),
+          };
+          appendTranscriptTurn(attempt.id, endAssistantTurn);
+          transcriptForCompletion = [...transcript, endAssistantTurn];
         }
 
-        const assistantTurn: TranscriptTurn = {
-          id: createId(),
-          role: "assistant",
-          content: nextMessage,
-          createdAt: nowIso(),
-        };
-
-        appendTranscriptTurn(attempt.id, assistantTurn);
-        setAttemptStatus(attempt.id, "in_progress");
-        await showNextQuestion(nextMessage);
-
-        logger.info("interview.turn.request.completed", {
-          attemptId: attempt.id,
-        });
-      } catch (turnError) {
-        const message = turnError instanceof Error ? turnError.message : "Failed to generate next question.";
-        setAttemptStatus(attempt.id, "error", message);
-        setError(message);
-        logger.error("interview.turn.request.failed", { message, attemptId: attempt.id });
-      } finally {
-        setLoadingTurn(false);
-      }
-    },
-    [appendTranscriptTurn, attempt, completeInterview, setAttemptStatus, showNextQuestion],
-  );
-
-  const submitAnswer = useCallback(
-    async (answer: string, answerDurationSec?: number) => {
-      const combinedAnswer = answer.trim();
-      if (!combinedAnswer) {
-        setError(EMPTY_RESPONSE_ERROR);
+        await completeInterview(transcriptForCompletion);
         return;
       }
 
-      const userTurn: TranscriptTurn = {
+      const nextMessage = [response, question].filter(Boolean).join("\n\n").trim();
+
+      const assistantTurn: TranscriptTurn = {
         id: createId(),
-        role: "user",
-        content: combinedAnswer,
+        role: "assistant",
+        content: nextMessage,
         createdAt: nowIso(),
-        answerDurationSec: answerDurationSec && answerDurationSec > 0 ? answerDurationSec : undefined,
       };
 
-      const nextTranscript = [...attempt.transcript, userTurn];
-      replaceTranscript(attempt.id, nextTranscript);
+      appendTranscriptTurn(attempt.id, assistantTurn);
+      setAttemptStatus(attempt.id, "in_progress");
+      await showNextQuestion(response, question);
 
-      resetAnswerDraft();
-      setTypingInProgress(false);
-      setForegroundVisible(false);
-      setQuestionVisible(false);
-      setPhase("transition");
+      logger.info("interview.turn.request.completed", {
+        attemptId: attempt.id,
+      });
+    } catch (turnError) {
+      const message = turnError instanceof Error ? turnError.message : "Failed to generate next question.";
+      setAttemptStatus(attempt.id, "error", message);
+      setError(message);
+      logger.error("interview.turn.request.failed", { message, attemptId: attempt.id });
+    } finally {
+      setLoadingTurn(false);
+    }
+  };
 
-      await requestNextTurn(nextTranscript);
-    },
-    [attempt.id, attempt.transcript, replaceTranscript, requestNextTurn, resetAnswerDraft],
-  );
+  const submitAnswer = async (answer: string, answerDurationSec?: number) => {
+    const combinedAnswer = answer.trim();
+    if (!combinedAnswer) {
+      setError(EMPTY_RESPONSE_ERROR);
+      return;
+    }
+
+    const userTurn: TranscriptTurn = {
+      id: createId(),
+      role: "user",
+      content: combinedAnswer,
+      createdAt: nowIso(),
+      answerDurationSec: answerDurationSec && answerDurationSec > 0 ? answerDurationSec : undefined,
+    };
+
+    const nextTranscript = [...attempt.transcript, userTurn];
+    replaceTranscript(attempt.id, nextTranscript);
+
+    resetAnswerDraft();
+    setTypingInProgress(false);
+    setForegroundVisible(false);
+    setQuestionVisible(false);
+    setPhase("transition");
+
+    await requestNextTurn(nextTranscript);
+  };
 
   const startInterview = async () => {
     if (!attempt.script) {
@@ -647,6 +706,7 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     }
 
     cancelInterviewerSpeech();
+    setResponseText("");
     setAttemptStatus(attempt.id, "in_progress");
     setForegroundVisible(false);
     setQuestionVisible(false);
@@ -719,12 +779,6 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
       return next;
     });
   };
-
-  useEffect(() => {
-    if (!interviewerVoiceEnabled) {
-      cancelInterviewerSpeech();
-    }
-  }, [cancelInterviewerSpeech, interviewerVoiceEnabled]);
 
   const toggleFullscreen = async () => {
     if (typeof document === "undefined") {
@@ -919,6 +973,9 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
             questionVisible ? "opacity-100 duration-[2500ms]" : "opacity-0 duration-300"
           } transition-opacity ease-in-out`}
         >
+          {responseText ? (
+            <p className="mb-6 text-center text-lg leading-relaxed text-slate-200/88 md:text-xl">{responseText}</p>
+          ) : null}
           <div className={`interview-question-text min-h-[3.6em] text-center ${questionSizeClass}`}>{visibleQuestionText}</div>
         </div>
 

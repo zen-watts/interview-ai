@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { getOpenAIClient, getOpenAIModel } from "@/src/lib/ai/openai";
 import { mapTranscriptToMessages, buildInterviewSystemPrompt } from "@/src/lib/ai/prompts/interview";
+import { interviewTurnOutputSchema } from "@/src/lib/ai/schemas";
+import { extractJsonObject, parseJson } from "@/src/lib/ai/server-utils";
 import { createLogger } from "@/src/lib/logger";
 import { END_TOKEN } from "@/src/lib/types";
 
@@ -21,30 +23,6 @@ const bodySchema = z.object({
     }),
   ),
 });
-
-function hasEndToken(message: string) {
-  return message
-    .split("\n")
-    .map((line) => line.trim())
-    .includes(END_TOKEN);
-}
-
-function sanitizePlainText(text: string) {
-  return text
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/__([^_]+)__/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/_([^_]+)_/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/^\s*[-*]\s+/gm, "")
-    .replace(/^\s*\d+\.\s+/gm, "")
-    .replace(/(^|\n)\s*(STAR|SITUATION|TASK|ACTION|RESULT)\s*:\s*/gi, "$1")
-    .replace(/\s*\n+\s*/g, " ")
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
-}
 
 /**
  * Returns the next interviewer message for an in-progress interview transcript.
@@ -68,7 +46,12 @@ export async function POST(request: Request) {
         maxAssistantTurns,
       });
 
-      return NextResponse.json({ message: END_TOKEN, isEnd: true });
+      return NextResponse.json({
+        response: "Thanks for your time. We have completed this interview.",
+        question: END_TOKEN,
+        message: "Thanks for your time. We have completed this interview.",
+        isEnd: true,
+      });
     }
 
     const client = getOpenAIClient();
@@ -85,32 +68,50 @@ export async function POST(request: Request) {
       ],
     });
 
-    const message = response.output_text?.trim() || "";
+    const outputText = response.output_text?.trim() || "";
 
-    if (!message) {
+    if (!outputText) {
       logger.error("Interview turn generation returned an empty response.", { responseId: response.id });
       return NextResponse.json({ error: "Model returned an empty interviewer turn" }, { status: 502 });
     }
 
-    const isEnd = message === END_TOKEN || hasEndToken(message);
-    const sanitizedMessage = isEnd ? END_TOKEN : sanitizePlainText(message);
-
-    if (!sanitizedMessage) {
-      logger.error("Interview turn normalization produced an empty response.", { responseId: response.id });
-      return NextResponse.json({ error: "Model returned an invalid interviewer turn" }, { status: 502 });
-    }
+    const jsonText = extractJsonObject(outputText);
+    const parsedTurn = interviewTurnOutputSchema.parse(parseJson<unknown>(jsonText));
+    const responseText = parsedTurn.response.trim();
+    const questionText = parsedTurn.question.trim();
+    const isEnd = questionText === END_TOKEN;
+    const message = isEnd ? responseText : [responseText, questionText].filter(Boolean).join("\n\n");
 
     logger.info("Interview turn generated successfully.", {
       responseId: response.id,
       isEnd,
-      messageLength: sanitizedMessage.length,
+      responseLength: responseText.length,
+      questionLength: questionText.length,
     });
 
     return NextResponse.json({
-      message: sanitizedMessage,
+      response: responseText,
+      question: questionText,
+      message,
       isEnd,
     });
   } catch (error) {
+    if (
+      error instanceof z.ZodError ||
+      (error instanceof Error &&
+        (error.message.includes("Invalid JSON returned by model") ||
+          error.message.includes("Model output does not contain a JSON object")))
+    ) {
+      logger.error("Interview turn output did not match required JSON contract.", {
+        message: error instanceof Error ? error.message : "Unknown output parse error",
+      });
+
+      return NextResponse.json(
+        { error: "Model returned invalid interview turn format" },
+        { status: 502 },
+      );
+    }
+
     logger.error("Interview turn request failed.", {
       message: error instanceof Error ? error.message : "Unknown server error",
     });

@@ -109,20 +109,15 @@ function useProfileForm(): ProfileFormState {
 
   const profile = store.profile;
   const hasResumeText = Boolean(profile?.resumeText);
-  const isDirty = (() => {
-    if (!profile || !form) {
-      return false;
-    }
-
-    return (
-      form.name.trim() !== profile.name ||
+  const isDirty =
+    profile !== null &&
+    form !== null &&
+    (form.name.trim() !== profile.name ||
       form.age.trim() !== (profile.age ? String(profile.age) : "") ||
       resolvePronounsValue(form) !== profile.pronouns ||
       form.resumeSummary.trim() !== profile.resumeSummary ||
       form.resumeEducation.trim() !== profile.resumeEducation ||
-      form.resumeExperience.trim() !== profile.resumeExperience
-    );
-  })();
+      form.resumeExperience.trim() !== profile.resumeExperience);
 
   const handleSave = () => {
     if (!profile || !form || !isDirty) {
@@ -436,6 +431,7 @@ function ProfileFormFields({
           </div>
         </div>
 
+        {resumeUploadStatus ? <Notice message={resumeUploadStatus} tone="neutral" /> : null}
         {resumeUploadError ? <Notice message={resumeUploadError} tone="error" /> : null}
 
         <div className="flex flex-wrap items-center gap-3">

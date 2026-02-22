@@ -3,10 +3,7 @@ import { z } from "zod";
 
 import { createLogger } from "@/src/lib/logger";
 import { getOpenAIClient, getOpenAIModel } from "@/src/lib/ai/openai";
-import {
-  buildScriptGenerationSystemPrompt,
-  buildScriptGenerationUserPrompt,
-} from "@/src/lib/ai/prompts/script-generation";
+import { assembleScriptGenerationCall } from "@/src/lib/ai/script-generation/assemble-script-generation-call";
 import { EXPERIENCE_LEVEL_OPTIONS } from "@/src/lib/types";
 
 const logger = createLogger("api.script");
@@ -23,29 +20,19 @@ const bodySchema = z.object({
     experienceLevel: z.enum(experienceValues),
     age: z.number().int().min(1).max(120).nullable().default(null),
     pronouns: z.string().default(""),
-    resumeText: z.string(),
     resumeSummary: z.string(),
-    resumeEducation: z.string().default(""),
-    resumeExperience: z.string().default(""),
-    createdAt: z.string(),
-    updatedAt: z.string(),
   }),
   role: z.object({
-    id: z.string().min(1),
     title: z.string().min(1),
     organizationName: z.string(),
     organizationDescription: z.string(),
     fullJobDescription: z.string(),
-    isFavorited: z.boolean().default(false),
-    createdAt: z.string(),
-    updatedAt: z.string(),
   }),
   config: z.object({
-    temperament: z.number().min(0).max(100),
-    questionDifficulty: z.number().min(0).max(100),
+    personaIntensity: z.number().min(0).max(100),
     followUpIntensity: z.number().min(0).max(100),
     primaryQuestionCount: z.number().min(1).max(10),
-    categories: z.array(z.enum(["Strictly Behavioral", "Technical Concepts", "Unhinged"])).min(1),
+    category: z.enum(["Strictly Behavioral", "Mix", "Technical Concepts", "Unhinged"]),
     notes: z.string(),
   }),
 });
@@ -68,16 +55,7 @@ export async function POST(request: Request) {
 
     const response = await client.responses.create({
       model,
-      input: [
-        {
-          role: "system",
-          content: buildScriptGenerationSystemPrompt(),
-        },
-        {
-          role: "user",
-          content: buildScriptGenerationUserPrompt(parsed.data),
-        },
-      ],
+      input: assembleScriptGenerationCall(parsed.data),
     });
 
     const script = response.output_text?.trim();

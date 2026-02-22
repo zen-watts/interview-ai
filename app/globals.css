@@ -277,6 +277,11 @@ textarea {
   animation: onboardingCardOut 220ms ease-in forwards;
 }
 
+.interview-complete-text {
+  animation: interviewCompleteTextFade 1700ms ease-in-out forwards;
+  will-change: opacity, filter;
+}
+
 @keyframes modalOverlayIn {
   0% {
     opacity: 0;
