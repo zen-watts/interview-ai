@@ -392,7 +392,7 @@ export function InterviewTimelineCard({ sessionId, transcript, onJumpToTranscrip
   if (!analysis || analysis.segments.length === 0) {
     return (
       <Card className="space-y-3">
-        <h2 className="text-2xl font-semibold text-paper-ink">Interview Timeline: Moments that Mattered</h2>
+        <h2 className="text-2xl font-semibold text-paper-ink">Interview Timeline</h2>
         <p className="text-paper-softInk">Timeline appears after at least one interviewer question and response.</p>
       </Card>
     );
@@ -517,8 +517,7 @@ export function InterviewTimelineCard({ sessionId, transcript, onJumpToTranscrip
       <Card className="space-y-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <h2 className="text-2xl font-semibold text-paper-ink">Interview Timeline: Moments that Mattered</h2>
-            <p className="text-paper-softInk">Interview at a glance first, then drill into a focus window.</p>
+            <h2 className="text-2xl font-semibold text-paper-ink">Interview Timeline</h2>
           </div>
 
           <div className="flex flex-wrap gap-2">

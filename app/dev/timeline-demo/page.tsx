@@ -14,7 +14,7 @@ export default function TimelineDemoPage() {
       <header className="space-y-2">
         <h1 className="text-4xl leading-tight">Timeline Demo</h1>
         <p className="text-paper-softInk">
-          Mock fixture rendering of the Interview Timeline: Moments that Mattered module.
+          Mock fixture rendering of the Interview Timeline module.
         </p>
       </header>
 

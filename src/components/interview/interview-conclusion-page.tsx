@@ -204,9 +204,7 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
               >
                 <div className="space-y-1">
                   <h2 className="font-sans text-sm font-semibold uppercase tracking-[0.08em] text-paper-ink">Impression</h2>
-                  <p className="font-sans text-xs uppercase tracking-[0.08em] text-paper-muted">
-                    Summary, click to expand details
-                  </p>
+                  <p className="font-sans text-xs uppercase tracking-[0.08em] text-paper-muted">Summary</p>
                 </div>
                 <span className="mt-0.5 font-sans text-xs uppercase tracking-[0.08em] text-paper-muted">
                   {impressionExpanded ? "Collapse details ▲" : "Expand details ▼"}
@@ -264,9 +262,7 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
               </Button>
             </div>
 
-            {!showTranscript ? (
-              <p className="text-paper-softInk">Hidden by default for quicker scan of final analysis.</p>
-            ) : attempt.transcript.length === 0 ? (
+            {!showTranscript ? null : attempt.transcript.length === 0 ? (
               <p className="text-paper-softInk">No turns yet.</p>
             ) : (
               <div className="space-y-3">
@@ -301,11 +297,11 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
 
         <div className="space-y-4 md:col-span-2">
           <Card className="space-y-2">
-            <h2 className="font-sans text-sm font-semibold uppercase tracking-[0.08em] text-paper-ink">Red flags</h2>
+            <h2 className="font-sans text-sm font-semibold uppercase tracking-[0.08em] text-paper-ink">Watch-outs</h2>
             {!attempt.analysis ? (
               <p className="text-paper-softInk">{analysisFallbackMessage}</p>
             ) : attempt.analysis.red_flags.length === 0 ? (
-              <p className="text-paper-softInk">No major red flags identified in this run.</p>
+              <p className="text-paper-softInk">No major watch-outs identified in this run.</p>
             ) : (
               <ul className="list-disc space-y-1 pl-6 text-paper-softInk">
                 {attempt.analysis.red_flags.map((flag) => (
