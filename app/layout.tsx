@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import "@/app/globals.css";
 import { DevTools } from "@/src/components/dev/dev-tools";
+import { AppBreadcrumbs } from "@/src/components/navigation/app-breadcrumbs";
 import { AppStoreProvider } from "@/src/components/providers/app-store-provider";
 
 const sourceSerif = Source_Serif_4({
@@ -30,7 +31,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={`${sourceSerif.variable} ${inter.variable}`}>
       <body>
         <AppStoreProvider>
-          <div className="mx-auto min-h-screen max-w-reading px-6 py-10 md:px-10 md:py-12">{children}</div>
+          <div className="mx-auto min-h-screen max-w-reading px-6 py-10 md:px-10 md:py-12">
+            <AppBreadcrumbs />
+            {children}
+          </div>
           {process.env.NODE_ENV !== "production" ? <DevTools /> : null}
         </AppStoreProvider>
       </body>

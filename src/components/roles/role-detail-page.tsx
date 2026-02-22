@@ -79,9 +79,6 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
     <main className="space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <Link href="/" className="font-sans text-xs uppercase tracking-[0.12em] text-paper-muted hover:text-paper-ink">
-            Home
-          </Link>
           <h1 className="text-4xl leading-tight">{role.title}</h1>
           <p className="max-w-3xl text-paper-softInk">
             {role.organizationName || role.organizationDescription || "Add context in settings to personalize interviews."}
