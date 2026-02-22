@@ -89,7 +89,7 @@ export function ProfilePage() {
     });
 
     logger.info("profile.saved", {
-      hasResumeText: Boolean(form.resumeText),
+      hasResumeText: Boolean(store.profile?.resumeText),
       hasResumeSummary: Boolean(form.resumeSummary),
     });
 
