@@ -30,44 +30,40 @@ export interface ScriptGenerationMessage {
 
 const categoryGuidance: Record<InterviewConfig["category"], string> = {
   "Strictly Behavioral":
-    "Focus on behavioral and situational prompts. Probe for specific examples and outcomes.",
-  Mix: "Blend behavioral questions with light technical-concept discussion tied to real work decisions.",
+    "Ask high-level behavioral questions focused on work style, ownership, communication, conflict, and outcomes.",
+  Mix: "Blend Strictly Behavioral and Technical Concepts questions in a balanced way.",
   "Technical Concepts":
-    "Ask conceptual technical questions in plain language tied to tradeoffs and communication, not quiz-style trivia.",
+    "Ask high-level technical concept questions adjusted to experience level. No trivia, no gotcha quizzes.",
   Unhinged:
-    "Be playful and surprising while staying professional, relevant, and psychologically realistic.",
+    "Prioritize fun and absurdity while still loosely tied to the role. This mode does not need to optimize for realistic prep value.",
 };
 
 function getPersonaGuidance(intensity: number) {
   if (intensity <= 20) {
-    return "Warm, encouraging, and collaborative.";
+    return "Very friendly and warm tone.";
   }
 
   if (intensity <= 45) {
-    return "Professional and curious with moderate pressure.";
+    return "Professional and neutral tone.";
   }
 
   if (intensity <= 70) {
-    return "Direct and challenging, testing clarity and accountability.";
+    return "Dry and direct tone.";
   }
 
-  return "High-pressure stress test with controlled intensity and realistic tension.";
+  return "Very dry, blunt, and not friendly tone.";
 }
 
 function getFollowUpGuidance(intensity: number) {
   if (intensity <= 20) {
-    return "Minimal follow-ups unless the answer misses the question.";
+    return "Never ask follow-up questions unless a hard clarification is absolutely needed.";
   }
 
   if (intensity <= 45) {
-    return "Occasional follow-ups to get specificity and outcomes.";
+    return "Occasionally ask one follow-up when it clearly helps.";
   }
 
-  if (intensity <= 70) {
-    return "Frequent follow-ups to probe tradeoffs, ownership, and decision quality.";
-  }
-
-  return "Multiple follow-ups per question when needed, with tight pressure on specifics.";
+  return "Ask up to two follow-ups when it makes sense, then move on to stay on track.";
 }
 
 function getFollowUpCap(intensity: number) {
@@ -75,15 +71,11 @@ function getFollowUpCap(intensity: number) {
     return 0;
   }
 
-  if (intensity <= 45) {
+  if (intensity <= 65) {
     return 1;
   }
 
-  if (intensity <= 70) {
-    return 2;
-  }
-
-  return 3;
+  return 2;
 }
 
 function applyTemplate(template: string, replacements: Record<string, string>) {
@@ -93,36 +85,40 @@ function applyTemplate(template: string, replacements: Record<string, string>) {
 }
 
 function buildProfileContext(profile: ScriptGenerationProfileInput) {
+  const ageText = profile.age ? `${profile.age}` : "(not provided)";
+
   return [
-    `- Name: ${profile.name}`,
-    `- Age: ${profile.age ?? "(not provided)"}`,
-    `- Pronouns: ${profile.pronouns || "(not provided)"}`,
-    `- Target job: ${profile.targetJob}`,
-    `- Experience level: ${profile.experienceLevel}`,
-    `- Resume summary: ${profile.resumeSummary || "(none)"}`,
+    `- Interview subject: ${profile.name}`,
+    `- Candidate snapshot for framing: ${profile.name}, age ${ageText}, pronouns ${profile.pronouns || "(not provided)"}, experience level ${profile.experienceLevel}`,
+    `- Candidate target direction: ${profile.targetJob}`,
+    `- Resume summary for optional personalization only: ${profile.resumeSummary || "(none)"}`,
   ].join("\n");
 }
 
 function buildRoleContext(role: ScriptGenerationRoleInput) {
   return [
-    `- Title: ${role.title}`,
-    `- Organization name: ${role.organizationName || "(none)"}`,
-    `- Organization description: ${role.organizationDescription || "(none)"}`,
-    `- Full job description: ${role.fullJobDescription || "(none)"}`,
+    `- Role title: ${role.title}`,
+    `- Organization: ${role.organizationName || "(none)"}`,
+    `- Organization context: ${role.organizationDescription || "(none)"}`,
+    `- Full role/job description context: ${role.fullJobDescription || "(none)"}`,
+    "- You may include occasional meta-style questions that reference role demands directly when helpful.",
   ].join("\n");
 }
 
 function buildInterviewConfigContext(config: InterviewConfig) {
   return [
-    `- Persona intensity (0 friendly, 100 stress tester): ${config.personaIntensity}`,
+    `- Persona intensity dial (0 friendly, 100 not friendly): ${config.personaIntensity}`,
+    `- Persona rule: tone only, does not change question difficulty.`,
     `- Persona guidance: ${getPersonaGuidance(config.personaIntensity)}`,
-    `- Follow-up intensity (0 never, 100 multiple): ${config.followUpIntensity}`,
+    `- Follow-up intensity dial (0 never, 100 frequent): ${config.followUpIntensity}`,
     `- Follow-up guidance: ${getFollowUpGuidance(config.followUpIntensity)}`,
-    `- Maximum follow-ups per primary question: ${getFollowUpCap(config.followUpIntensity)}`,
-    `- Primary question count: ${config.primaryQuestionCount}`,
+    `- Maximum follow-ups per primary question: ${getFollowUpCap(config.followUpIntensity)} (hard cap)`,
+    `- Primary question count dial: ${config.primaryQuestionCount}`,
+    `- Length rule: this count defines interview length and must be pre-planned.`,
     `- Category: ${config.category}`,
     `- Category guidance: ${categoryGuidance[config.category]}`,
-    `- Extra user notes: ${config.notes || "(none)"}`,
+    `- Catch-all notes (highest-priority customization): ${config.notes || "(none)"}`,
+    "- Notes win over other style rules unless they conflict with safety constraints.",
   ].join("\n");
 }
 

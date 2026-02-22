@@ -156,7 +156,13 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
       const v1 = parsed.data;
       return {
         schemaVersion: 2 as const,
-        profile: v1.profile,
+        profile: v1.profile
+          ? {
+              ...v1.profile,
+              age: v1.profile.age ?? null,
+              pronouns: v1.profile.pronouns ?? "",
+            }
+          : null,
         roles: v1.roles.map((role) => ({
           id: role.id,
           title: role.title,
@@ -168,6 +174,9 @@ export function migrateToCurrentSchema(rawValue: unknown): AppStore {
           updatedAt: role.updatedAt,
         })),
         attempts: v1.attempts,
+        devSettings: {
+          showInterviewerScriptOnConclusion: false,
+        },
       };
     }
     return createEmptyStore();

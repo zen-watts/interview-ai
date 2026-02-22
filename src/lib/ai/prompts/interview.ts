@@ -9,11 +9,16 @@ export function buildInterviewSystemPrompt(script: string): string {
     "",
     "Hard constraints:",
     "- Ask exactly one interviewer message per turn.",
-    "- Keep each interviewer message concise and natural.",
+    "- Every turn must be strict JSON with exactly keys: response, question.",
+    '- JSON example: {"response":"Short acknowledgement.","question":"Single concise question?"}',
+    "- response should be brief and natural (1-2 short sentences max).",
+    "- question should be concise (1 sentence preferred, 2 max).",
     "- Do not provide coaching, hints, or feedback during interview turns.",
     "- If the previous candidate answer is vague, ask a focused follow-up before moving on.",
     "- Avoid looping on the same missing detail forever. If unresolved after a few probes, acknowledge the gap and advance.",
-    "- If the interview is finished, output the end token on its own line and nothing else.",
+    "- On the very first turn, response should contain a short greeting and question should contain the first question.",
+    "- If the interview is finished, response should contain a short wrap-up signal and question must be exactly the end token.",
+    "- Return JSON only. No markdown. No extra keys. No extra text.",
     `- End token: ${END_TOKEN}`,
   ].join("\n");
 }

@@ -31,6 +31,12 @@ function findLatestAssistantQuestion(transcript: TranscriptTurn[]) {
   for (let index = transcript.length - 1; index >= 0; index -= 1) {
     const turn = transcript[index];
     if (turn.role === "assistant") {
+      const lines = turn.content.split("\n").map((line) => line.trim());
+      const labeledQuestion = lines.find((line) => line.toLowerCase().startsWith("question:"));
+      if (labeledQuestion) {
+        return labeledQuestion.slice("question:".length).trim();
+      }
+
       return turn.content;
     }
   }
@@ -183,14 +189,28 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
         primaryQuestionCount: attempt.config.primaryQuestionCount,
       });
 
-      if (next.isEnd || next.message.trim() === END_TOKEN) {
+      if (next.isEnd || next.question.trim() === END_TOKEN) {
+        let transcriptForAnalysis = transcript;
+
+        if (next.response.trim()) {
+          const endAssistantTurn: TranscriptTurn = {
+            id: createId(),
+            role: "assistant",
+            content: `Response: ${next.response.trim()}`,
+            createdAt: nowIso(),
+          };
+          appendTranscriptTurn(attempt.id, endAssistantTurn);
+          transcriptForAnalysis = [...transcript, endAssistantTurn];
+        }
+
         setAttemptStatus(attempt.id, "analysis_pending");
-        await runAnalysis(transcript);
+        await runAnalysis(transcriptForAnalysis);
         return;
       }
 
+      const nextQuestion = next.question.trim();
       const nextMessage = next.message.trim();
-      await streamAssistantMessage(nextMessage);
+      await streamAssistantMessage(nextQuestion);
 
       const assistantTurn: TranscriptTurn = {
         id: createId(),

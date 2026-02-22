@@ -20,3 +20,8 @@ export const resumeOutputSchema = z.object({
   experienceLevel: z.enum(experienceValues),
   resumeSummary: z.string(),
 });
+
+export const interviewTurnOutputSchema = z.object({
+  response: z.string().min(1),
+  question: z.string().min(1),
+});

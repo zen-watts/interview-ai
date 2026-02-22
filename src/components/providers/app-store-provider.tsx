@@ -49,6 +49,7 @@ interface ProfileInput {
 interface AppStoreContextValue {
   store: AppStore;
   hydrated: boolean;
+  replaceStore: (nextStore: AppStore) => void;
   saveProfile: (input: ProfileInput) => void;
   createRole: (input: RoleInput) => RoleProfile;
   updateRole: (roleId: string, input: RoleInput) => void;
@@ -88,6 +89,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
     persistStore(store);
   }, [hydrated, store]);
+
+  const replaceStore = useCallback((nextStore: AppStore) => {
+    setStore(nextStore);
+    logger.info("App state replaced from developer editor.", {
+      roleCount: nextStore.roles.length,
+      attemptCount: nextStore.attempts.length,
+      hasProfile: Boolean(nextStore.profile),
+    });
+  }, []);
 
   const saveProfile = useCallback((input: ProfileInput) => {
     setStore((current) => {
@@ -352,6 +362,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     () => ({
       store,
       hydrated,
+      replaceStore,
       saveProfile,
       createRole,
       updateRole,
@@ -372,6 +383,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       createRole,
       deleteRole,
       hydrated,
+      replaceStore,
       patchAttempt,
       replaceTranscript,
       saveProfile,
@@ -385,7 +397,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-    return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
+  return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
 }
 
 export function useAppStore() {

@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import { useAppStore } from "@/src/components/providers/app-store-provider";
 import { STORAGE_KEY } from "@/src/lib/storage/schema";
 
 export function DevTools() {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
   const { store, patchDevSettings } = useAppStore();
+  const inInnerPromptMode = pathname === "/dev/inner-prompt";
+  const showScriptOnConclusion = store.devSettings?.showInterviewerScriptOnConclusion ?? false;
 
   const resetAppData = () => {
     window.localStorage.removeItem(STORAGE_KEY);
@@ -17,6 +22,15 @@ export function DevTools() {
   const clearBrowserStorage = () => {
     window.localStorage.clear();
     window.location.href = "/";
+  };
+
+  const toggleInnerPromptMode = () => {
+    if (inInnerPromptMode) {
+      router.push("/");
+      return;
+    }
+
+    router.push("/dev/inner-prompt");
   };
 
   return (
@@ -35,13 +49,20 @@ export function DevTools() {
           <button
             type="button"
             className="w-full rounded-paper border border-paper-border px-3 py-2 text-left text-sm text-paper-softInk transition hover:border-paper-accent hover:text-paper-ink"
+            onClick={toggleInnerPromptMode}
+          >
+            {inInnerPromptMode ? "Exit Inner Prompt mode" : "Open Inner Prompt mode"}
+          </button>
+          <button
+            type="button"
+            className="w-full rounded-paper border border-paper-border px-3 py-2 text-left text-sm text-paper-softInk transition hover:border-paper-accent hover:text-paper-ink"
             onClick={() =>
               patchDevSettings({
-                showInterviewerScriptOnConclusion: !store.devSettings.showInterviewerScriptOnConclusion,
+                showInterviewerScriptOnConclusion: !showScriptOnConclusion,
               })
             }
           >
-            {store.devSettings.showInterviewerScriptOnConclusion
+            {showScriptOnConclusion
               ? "Hide interviewer script on conclusion"
               : "Show interviewer script on conclusion"}
           </button>
