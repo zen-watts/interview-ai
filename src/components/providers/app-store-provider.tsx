@@ -52,6 +52,7 @@ interface AppStoreContextValue {
   saveProfile: (input: ProfileInput) => void;
   createRole: (input: RoleInput) => RoleProfile;
   updateRole: (roleId: string, input: RoleInput) => void;
+  toggleRoleFavorite: (roleId: string) => void;
   createAttempt: (roleId: string, config: InterviewConfig) => InterviewAttempt;
   patchAttempt: (attemptId: string, patch: Partial<InterviewAttempt>) => void;
   appendTranscriptTurn: (attemptId: string, turn: TranscriptTurn) => void;
@@ -116,6 +117,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       organizationName: input.organizationName.trim(),
       organizationDescription: input.organizationDescription.trim(),
       fullJobDescription: input.fullJobDescription.trim(),
+      isFavorited: false,
       createdAt: now,
       updatedAt: now,
     };
@@ -156,6 +158,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         ...current,
         roles,
       };
+    });
+  }, []);
+
+  const toggleRoleFavorite = useCallback((roleId: string) => {
+    setStore((current) => {
+      const roles = current.roles.map((role) => {
+        if (role.id !== roleId) {
+          return role;
+        }
+
+        logger.info("Role favorite toggled.", { roleId, isFavorited: !role.isFavorited });
+        return { ...role, isFavorited: !role.isFavorited };
+      });
+
+      return { ...current, roles };
     });
   }, []);
 
@@ -318,6 +335,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       saveProfile,
       createRole,
       updateRole,
+      toggleRoleFavorite,
       createAttempt,
       patchAttempt,
       appendTranscriptTurn,
@@ -340,6 +358,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setAttemptStatus,
       patchDevSettings,
       store,
+      toggleRoleFavorite,
       updateRole,
     ],
   );
