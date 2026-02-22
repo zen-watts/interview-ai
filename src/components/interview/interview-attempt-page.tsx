@@ -769,7 +769,12 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
     }
 
     cancelInterviewerSpeech();
-    router.replace(`/roles/${role.id}`);
+
+    if (attempt.transcript.length > 0 && !completionStartedRef.current) {
+      void completeInterview(attempt.transcript);
+    }
+
+    router.replace(`/roles/${role.id}/attempts/${attempt.id}/conclusion`);
   };
 
   const toggleInterviewerVoice = () => {
@@ -811,7 +816,11 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
               onClick={startInterview}
               disabled={loadingTurn || loadingAnalysis || attempt.status === "script_pending"}
             >
-              {loadingTurn || attempt.status === "script_pending" ? "Preparing..." : "Begin"}
+              {loadingTurn || attempt.status === "script_pending" ? (
+                <span className="loading-dots">Preparing</span>
+              ) : (
+                "Begin"
+              )}
             </Button>
             {error ? <Notice tone="error" message={error} className="mx-auto max-w-xl text-left" /> : null}
             {attempt.lastError && !error ? (
@@ -867,21 +876,10 @@ export function InterviewAttemptPage({ roleId, attemptId }: { roleId: string; at
         <button
           type="button"
           onClick={leaveInterview}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-500/70 bg-slate-900/50 text-base text-slate-100 transition hover:border-slate-300"
+          className="inline-flex items-center gap-2 rounded-full border border-slate-500/70 bg-slate-900/50 px-4 py-2 font-sans text-xs uppercase tracking-[0.16em] text-slate-100 transition hover:border-slate-300"
           aria-label="Exit interview"
         >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            className="h-4 w-4"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          >
-            <path d="M6 6L18 18" />
-            <path d="M18 6L6 18" />
-          </svg>
+          Exit interview
         </button>
 
         <div className="flex items-center gap-2">

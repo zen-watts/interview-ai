@@ -84,10 +84,9 @@ export function HomePage() {
   }
 
   return (
-    <main className="space-y-8">
+    <main className="page-enter space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <p className="font-sans text-xs uppercase tracking-[0.14em] text-paper-muted">Inner View</p>
           <h1 className="text-4xl leading-tight md:text-5xl">Role Dashboard</h1>
           <p className="max-w-2xl text-paper-softInk">
             Pick a role to practice, edit its context, or create a new one.
@@ -116,7 +115,7 @@ export function HomePage() {
         <>
           {pinnedRoles.length > 0 && (
             <section className="space-y-4">
-              <h2 className="text-lg font-medium">Pinned</h2>
+              <h2 className="text-lg font-medium">Pinned Roles</h2>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {pinnedRoles.map((role) => (
                   <RoleCard key={role.id} role={role} />
