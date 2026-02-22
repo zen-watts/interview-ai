@@ -84,9 +84,9 @@ export function HomePage() {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <p className="font-sans text-xs uppercase tracking-[0.14em] text-paper-muted">Inner View</p>
-          <h1 className="text-4xl leading-tight md:text-5xl">Role Practice</h1>
+          <h1 className="text-4xl leading-tight md:text-5xl">Role Dashboard</h1>
           <p className="max-w-2xl text-paper-softInk">
-            Build a role profile, generate an interviewer script, and practice realistic conversations.
+            Pick a role to practice, edit its context, or create a new one.
           </p>
         </div>
 

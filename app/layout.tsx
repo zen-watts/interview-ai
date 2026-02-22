@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${sourceSerif.variable} ${inter.variable}`}>
-      <body>
+      <body suppressHydrationWarning>
         <AppStoreProvider>
           <div className="mx-auto min-h-screen max-w-reading px-6 py-10 md:px-10 md:py-12">
             <AppBreadcrumbs />

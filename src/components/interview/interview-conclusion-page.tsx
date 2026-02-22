@@ -22,13 +22,12 @@ const statusCopy: Record<string, string> = {
 };
 
 export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string; attemptId: string }) {
-  const { store, setAttemptStatus, setAttemptAnalysis, patchDevSettings } = useAppStore();
+  const { store, setAttemptStatus, setAttemptAnalysis } = useAppStore();
   const router = useRouter();
 
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
-  const [showScript, setShowScript] = useState(store.devSettings.showInterviewerScriptOnConclusion);
 
   const role = useMemo(() => store.roles.find((item) => item.id === roleId) ?? null, [roleId, store.roles]);
   const attempt = useMemo(
@@ -45,10 +44,6 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
       router.replace(`/roles/${role.id}/attempts/${attempt.id}`);
     }
   }, [attempt, role, router]);
-
-  useEffect(() => {
-    setShowScript(store.devSettings.showInterviewerScriptOnConclusion);
-  }, [store.devSettings.showInterviewerScriptOnConclusion]);
 
   if (!role || !attempt) {
     return (
@@ -107,8 +102,6 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
     attempt.status === "analysis_pending" || loadingAnalysis
       ? "Analysis in progress..."
       : "Analysis will appear here once generation completes.";
-  const isDevMode = process.env.NODE_ENV !== "production";
-  const canShowScriptToggle = isDevMode && Boolean(attempt.script);
 
   return (
     <main className="space-y-6 pb-12">
@@ -219,30 +212,12 @@ export function InterviewConclusionPage({ roleId, attemptId }: { roleId: string;
             </p>
           </Card>
 
-          {canShowScriptToggle ? (
+          {store.devSettings.showInterviewerScriptOnConclusion && attempt.script ? (
             <Card className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-2xl font-semibold text-paper-ink">Interviewer script</h2>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    const next = !showScript;
-                    setShowScript(next);
-                    patchDevSettings({ showInterviewerScriptOnConclusion: next });
-                  }}
-                >
-                  {showScript ? "Hide" : "Show"}
-                </Button>
-              </div>
-
-              {showScript && attempt.script ? (
-                <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-paper border border-paper-border bg-paper-elevated p-4 text-sm leading-relaxed text-paper-softInk">
-                  {attempt.script}
-                </pre>
-              ) : (
-                <p className="text-paper-softInk">Hidden. Enable to inspect the generated interviewer script.</p>
-              )}
+              <h2 className="text-2xl font-semibold text-paper-ink">Interviewer script</h2>
+              <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-paper border border-paper-border bg-paper-elevated p-4 text-sm leading-relaxed text-paper-softInk">
+                {attempt.script}
+              </pre>
             </Card>
           ) : null}
         </div>
