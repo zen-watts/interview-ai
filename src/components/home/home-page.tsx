@@ -25,12 +25,8 @@ export function HomePage() {
 
   return (
     <main className="space-y-8">
-      <header className="space-y-2">
-        <p className="font-sans text-xs uppercase tracking-[0.14em] text-paper-muted">Quiet Interview</p>
-        <h1 className="text-4xl leading-tight md:text-5xl">Role Practice</h1>
-        <p className="max-w-2xl text-paper-softInk">
-          Build a role profile, generate an interviewer script, and practice realistic conversations.
-        </p>
+      <header>
+        <h1 className="text-4xl leading-tight md:text-5xl">Role Dashboard</h1>
       </header>
 
       {roles.length > 0 ? (
