@@ -55,7 +55,7 @@ export function RoleForm({
   };
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
+    <form className="space-y-4" onSubmit={handleSubmit}>
       <div className="space-y-2">
         <Label htmlFor="role-title">Role Title</Label>
         <Input
@@ -93,7 +93,7 @@ export function RoleForm({
               organizationDescription: event.target.value,
             }))
           }
-          rows={3}
+          rows={2}
           placeholder="Share information about the organization"
         />
       </div>
@@ -109,7 +109,7 @@ export function RoleForm({
               fullJobDescription: event.target.value,
             }))
           }
-          rows={6}
+          rows={4}
           placeholder="Paste full job description here"
         />
       </div>
