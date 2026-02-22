@@ -3,10 +3,7 @@ import { z } from "zod";
 
 import { createLogger } from "@/src/lib/logger";
 import { getOpenAIClient, getOpenAIModel } from "@/src/lib/ai/openai";
-import {
-  buildScriptGenerationSystemPrompt,
-  buildScriptGenerationUserPrompt,
-} from "@/src/lib/ai/prompts/script-generation";
+import { assembleScriptGenerationCall } from "@/src/lib/ai/script-generation/assemble-script-generation-call";
 import { EXPERIENCE_LEVEL_OPTIONS } from "@/src/lib/types";
 
 const logger = createLogger("api.script");
@@ -64,16 +61,7 @@ export async function POST(request: Request) {
 
     const response = await client.responses.create({
       model,
-      input: [
-        {
-          role: "system",
-          content: buildScriptGenerationSystemPrompt(),
-        },
-        {
-          role: "user",
-          content: buildScriptGenerationUserPrompt(parsed.data),
-        },
-      ],
+      input: assembleScriptGenerationCall(parsed.data),
     });
 
     const script = response.output_text?.trim();
