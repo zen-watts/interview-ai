@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { useAppStore } from "@/src/components/providers/app-store-provider";
 import { AttemptForm } from "@/src/components/roles/attempt-form";
@@ -44,7 +45,9 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
     setAttemptScript,
     setAttemptStatus,
     patchAttempt,
+    deleteRole,
   } = useAppStore();
+  const router = useRouter();
 
   const [editOpen, setEditOpen] = useState(false);
   const [attemptOpen, setAttemptOpen] = useState(false);
@@ -146,6 +149,25 @@ export function RoleDetailPage({ roleId }: { roleId: string }) {
               setEditOpen(false);
             }}
             onCancel={() => setEditOpen(false)}
+            extraActions={
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => {
+                  const confirmed = window.confirm(
+                    "Delete this role and all interview attempts tied to it?",
+                  );
+                  if (!confirmed) {
+                    return;
+                  }
+                  deleteRole(role.id);
+                  setEditOpen(false);
+                  router.push("/");
+                }}
+              >
+                Delete
+              </Button>
+            }
           />
         </Modal>
       ) : null}
