@@ -30,7 +30,7 @@ const config: Config = {
         paper: "0.75rem",
       },
       maxWidth: {
-        reading: "76rem",
+        reading: "86rem",
       },
     },
   },

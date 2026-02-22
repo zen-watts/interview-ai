@@ -150,15 +150,6 @@ function parseCreatedAtMs(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function shortEvidence(value: string, maxLength = 92) {
-  const normalized = value.replace(/\s+/g, " ").trim();
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-
-  return `${normalized.slice(0, maxLength - 1).trim()}...`;
-}
-
 function formatAxisValue(mode: "time" | "turn", value: number) {
   if (mode === "time") {
     return `${Math.round(value)}s`;
@@ -426,9 +417,6 @@ export function InterviewTimelineCard({ sessionId, transcript, onJumpToTranscrip
     activeFilter === "all" ? defaultAllMarkers(allFilteredMarkers) : [...allFilteredMarkers].sort(compareBySeverity).slice(0, FILTER_LIMIT);
   const markersForChart = expanded ? [...allFilteredMarkers].sort(compareBySequence) : [...candidateMarkers].sort(compareBySequence);
 
-  const topCallouts = [...allFilteredMarkers].sort(compareBySeverity).slice(0, 4);
-  const topCalloutIds = new Set(topCallouts.map((marker) => marker.id));
-
   const focusMarkers = markersForChart.filter((marker) => {
     const globalPct = toGlobalPct(marker.eventTurnIndex);
     return globalPct >= focusStartPct && globalPct <= focusEndPct;
@@ -675,34 +663,6 @@ export function InterviewTimelineCard({ sessionId, transcript, onJumpToTranscrip
           </div>
         </section>
 
-        {topCallouts.length > 0 ? (
-          <section className="space-y-2">
-            <p className="font-sans text-xs uppercase tracking-[0.09em] text-paper-muted">Top moments</p>
-            <div className="grid gap-2 md:grid-cols-2">
-              {topCallouts.map((marker) => {
-                const markerStyle = markerStyleByType[marker.type];
-                return (
-                  <button
-                    key={`callout-${marker.id}`}
-                    type="button"
-                    className="rounded-paper border border-paper-border bg-paper-elevated px-3 py-2 text-left hover:border-paper-accent"
-                    onClick={() => {
-                      const center = toGlobalPct(marker.eventTurnIndex);
-                      const nextStart = clamp(center - focusSpan / 2, 0, 100 - focusSpan);
-                      setFocusStartPct(nextStart);
-                      setFocusEndPct(nextStart + focusSpan);
-                      setSelectedMarker(marker);
-                    }}
-                  >
-                    <p className={`font-sans text-[11px] uppercase tracking-[0.09em] ${markerStyle.labelClass}`}>{marker.shortLabel}</p>
-                    <p className="mt-1 text-sm text-paper-softInk">{shortEvidence(marker.evidenceSnippet)}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
-
         <section className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="font-sans text-xs uppercase tracking-[0.09em] text-paper-muted">Focus window</p>
@@ -758,7 +718,6 @@ export function InterviewTimelineCard({ sessionId, transcript, onJumpToTranscrip
               {positionedFocusMarkers.map(({ marker, x, y }) => {
                 const markerStyle = markerStyleByType[marker.type];
                 const dotSize = markerDotSize(marker);
-                const showMicroLabel = topCalloutIds.has(marker.id);
 
                 return (
                   <button
@@ -779,14 +738,6 @@ export function InterviewTimelineCard({ sessionId, transcript, onJumpToTranscrip
                     >
                       {dotSize >= 13 ? markerStyle.icon : ""}
                     </span>
-
-                    {showMicroLabel ? (
-                      <span
-                        className={`pointer-events-none absolute left-[calc(100%+5px)] top-1/2 -translate-y-1/2 whitespace-nowrap rounded-paper bg-paper-bg/90 px-1.5 py-0.5 text-[10px] font-semibold ${markerStyle.labelClass}`}
-                      >
-                        {marker.shortLabel}
-                      </span>
-                    ) : null}
 
                     <span className="pointer-events-none absolute left-1/2 top-0 z-40 hidden w-72 -translate-x-1/2 -translate-y-[118%] rounded-paper border border-paper-border bg-paper-bg p-3 text-left text-sm leading-snug text-paper-softInk shadow-lg group-hover:block">
                       <span className="block font-semibold text-paper-ink">{marker.shortLabel}</span>
