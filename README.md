@@ -59,6 +59,14 @@ Open [http://localhost:3000](http://localhost:3000).
 - `npm run build`: production build
 - `npm run check`: lint + typecheck + build
 
+## Docs
+
+- `docs/END_TO_END.md`: product flow and lifecycle
+- `docs/BRAND.md`: visual and voice system
+- `docs/LOGGING.md`: logging conventions
+- `docs/ENGINEERING.md`: architecture and implementation notes
+- `docs/REPORT.md`: current status and known gaps
+
 ## Notes
 
 - Without `OPENAI_API_KEY`, UI still works but AI calls fail with inline error messages.
