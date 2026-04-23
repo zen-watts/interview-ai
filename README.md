@@ -1,6 +1,10 @@
-# Interview AI (v1)
+# Inner View
 
 AI-mediated interview practice with a calm, editorial UI. The app builds interview context from profile + role + interview config, runs a turn-by-turn interview, and generates no-score post-interview analysis.
+
+## Repo State
+
+The original hackathon submission is preserved on the `hackathon-snapshot` branch and the `hackathon-final-submission` tag. `main` includes post-hackathon cleanup and improvements. Since the hackathon, the repo has been cleaned up, unused PDF.js assets/config were removed, docs were restored, and the dashboard/navigation UI has been refined.
 
 ## Stack
 

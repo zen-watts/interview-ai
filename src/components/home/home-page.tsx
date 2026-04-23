@@ -84,18 +84,14 @@ export function HomePage() {
   }
 
   return (
-    <main className="page-enter space-y-8">
+    <main className="page-enter space-y-8 pt-4">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <h1 className="text-4xl leading-tight md:text-5xl">Role Dashboard</h1>
+          <h1 className="text-4xl leading-tight md:text-5xl">Roles</h1>
+          <p className="max-w-2xl text-paper-softInk">
+            Create and manage interview roles for different applications.
+          </p>
         </div>
-
-        <Link
-          href="/profile"
-          className="self-start -mt-4 font-sans text-xs uppercase tracking-[0.16em] text-paper-softInk hover:text-paper-ink"
-        >
-          Edit Profile
-        </Link>
       </header>
 
       {!hasRoles ? (
@@ -130,8 +126,8 @@ export function HomePage() {
                 onClick={() => setIsCreateOpen(true)}
               >
                 <Card className="flex h-full flex-col items-center justify-center gap-3 transition-all duration-200 hover:-translate-y-1 hover:border-paper-accent hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
-                  <span className="text-4xl leading-none text-paper-muted">+</span>
-                  <span className="font-sans text-sm text-paper-muted">Create role</span>
+                  <span className="text-4xl leading-none text-paper-softInk">+</span>
+                  <span className="font-sans text-sm text-paper-ink">Create role</span>
                 </Card>
               </button>
               {allRoles.map((role) => (

@@ -689,7 +689,7 @@ export function ProfilePage() {
                 clipRule="evenodd"
               />
             </svg>
-            Role Dashboard
+            Roles
           </Link>
         ) : (
           <span className="inline-flex items-center gap-2 font-sans text-xs uppercase tracking-[0.14em] text-paper-muted">
@@ -706,7 +706,7 @@ export function ProfilePage() {
                 clipRule="evenodd"
               />
             </svg>
-            Role Dashboard
+            Roles
           </span>
         )}
       </header>
