@@ -74,3 +74,6 @@ pnpm-store/
 # ===== Misc =====
 *.swp
 *.swo
+
+# ===== Local agent instructions =====
+AGENTS.md
