@@ -4,7 +4,7 @@ AI-mediated interview practice with a calm, editorial UI. The app builds intervi
 
 ## Repo State
 
-The original hackathon submission is preserved on the `hackathon-snapshot` branch and the `hackathon-final-submission` tag. `main` includes post-hackathon cleanup and improvements. Since the hackathon, the repo has been cleaned up, unused PDF.js assets/config were removed, docs were restored, and the dashboard/navigation UI has been refined.
+The original hackathon submission is preserved in the `hackathon-snapshot` branch and the `hackathon-final-submission` tag. `main` includes post-hackathon cleanup and improvements made after the event. For a fuller record of those changes, see `docs/post-hackathon-changes.md`.
 
 ## Stack
 
